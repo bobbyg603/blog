@@ -1,7 +1,6 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import BlogCard from '../components/BlogCard.astro';
-import SkillBar from '../components/SkillBar.astro';
 import { getCollection } from 'astro:content';
 
 const posts = (await getCollection('blog'))
@@ -118,32 +117,167 @@ const posts = (await getCollection('blog'))
     </div>
   </section>
 
-  <!-- Skills Section -->
+  <!-- Experience Section -->
   <section class="py-20">
     <div class="max-w-6xl mx-auto px-4">
-      <div class="grid md:grid-cols-2 gap-12 items-center">
-        <div>
-          <h2 class="text-3xl md:text-4xl font-display font-bold text-timber mb-6">
-            Technical Skills
-          </h2>
-          <p class="text-stone mb-8">
-            From frontend frameworks to backend systems, I've spent years honing my craft across the full stack.
-          </p>
-          <SkillBar skill="Full Stack Development" level={95} />
-          <SkillBar skill="Backend & APIs" level={90} />
-          <SkillBar skill="Database Design" level={85} />
-          <SkillBar skill="DevOps & CI/CD" level={90} />
-        </div>
-        <div class="relative">
-          <img
-            src="/pictures/bobby-keith-working.jpeg"
-            alt="Bobby working"
-            class="rounded-2xl shadow-xl"
-          />
-        </div>
+      <h2 class="text-3xl md:text-4xl font-display font-bold text-timber text-center mb-4">
+        Experience
+      </h2>
+      <p class="text-stone text-center max-w-2xl mx-auto mb-12">
+        A diverse background spanning development, product, and operations. Click a card to learn more.
+      </p>
+
+      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        <!-- DEVELOPMENT -->
+        <!-- App Development -->
+        <button class="exp-card group" data-color="barn-red">
+          <div class="exp-card-icon bg-barn-red/10 text-barn-red group-[.active]:bg-barn-red group-[.active]:text-cream">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+            </svg>
+          </div>
+          <h3 class="exp-card-title">App Development</h3>
+          <div class="exp-card-desc"><span>Building native and cross-platform applications for mobile and desktop.</span></div>
+        </button>
+
+        <!-- Agentic Development -->
+        <button class="exp-card group" data-color="sage">
+          <div class="exp-card-icon bg-sage/10 text-sage group-[.active]:bg-sage group-[.active]:text-cream">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+            </svg>
+          </div>
+          <h3 class="exp-card-title">Agentic Development</h3>
+          <div class="exp-card-desc"><span>Orchestrating AI agents to supercharge software development workflows and productivity.</span></div>
+        </button>
+
+        <!-- MCP -->
+        <button class="exp-card group" data-color="gold">
+          <div class="exp-card-icon bg-gold/10 text-gold group-[.active]:bg-gold group-[.active]:text-timber">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+            </svg>
+          </div>
+          <h3 class="exp-card-title">MCP</h3>
+          <div class="exp-card-desc"><span>Model Context Protocol - Building bridges between AI models and external tools, data sources, and services.</span></div>
+        </button>
+
+        <!-- INFRASTRUCTURE -->
+        <!-- Cloud Services -->
+        <button class="exp-card group" data-color="timber">
+          <div class="exp-card-icon bg-timber/10 text-timber group-[.active]:bg-timber group-[.active]:text-cream">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"/>
+            </svg>
+          </div>
+          <h3 class="exp-card-title">Cloud Services</h3>
+          <div class="exp-card-desc"><span>Designing and deploying scalable infrastructure on AWS, Azure, and Google Cloud.</span></div>
+        </button>
+
+        <!-- DevOps -->
+        <button class="exp-card group" data-color="barn-red">
+          <div class="exp-card-icon bg-barn-red/10 text-barn-red group-[.active]:bg-barn-red group-[.active]:text-cream">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+            </svg>
+          </div>
+          <h3 class="exp-card-title">DevOps</h3>
+          <div class="exp-card-desc"><span>Automating CI/CD pipelines, infrastructure as code, and deployment workflows.</span></div>
+        </button>
+
+        <!-- System Administration -->
+        <button class="exp-card group" data-color="sage">
+          <div class="exp-card-icon bg-sage/10 text-sage group-[.active]:bg-sage group-[.active]:text-cream">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01"/>
+            </svg>
+          </div>
+          <h3 class="exp-card-title">System Administration</h3>
+          <div class="exp-card-desc"><span>Managing servers, networks, and infrastructure to keep systems running smoothly.</span></div>
+        </button>
+
+        <!-- PRODUCT -->
+        <!-- Product Design -->
+        <button class="exp-card group" data-color="gold">
+          <div class="exp-card-icon bg-gold/10 text-gold group-[.active]:bg-gold group-[.active]:text-timber">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"/>
+            </svg>
+          </div>
+          <h3 class="exp-card-title">Product Design</h3>
+          <div class="exp-card-desc"><span>Creating user-centered designs from wireframes to polished interfaces.</span></div>
+        </button>
+
+        <!-- Product Management -->
+        <button class="exp-card group" data-color="timber">
+          <div class="exp-card-icon bg-timber/10 text-timber group-[.active]:bg-timber group-[.active]:text-cream">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+            </svg>
+          </div>
+          <h3 class="exp-card-title">Product Management</h3>
+          <div class="exp-card-desc"><span>Driving product strategy, roadmaps, and cross-functional team alignment.</span></div>
+        </button>
+
+        <!-- Program Management -->
+        <button class="exp-card group" data-color="barn-red">
+          <div class="exp-card-icon bg-barn-red/10 text-barn-red group-[.active]:bg-barn-red group-[.active]:text-cream">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+            </svg>
+          </div>
+          <h3 class="exp-card-title">Program Management</h3>
+          <div class="exp-card-desc"><span>Orchestrating multiple projects, stakeholders, and timelines to deliver outcomes.</span></div>
+        </button>
+
+        <!-- BUSINESS & CONTENT -->
+        <!-- Technical Sales -->
+        <button class="exp-card group" data-color="sage">
+          <div class="exp-card-icon bg-sage/10 text-sage group-[.active]:bg-sage group-[.active]:text-cream">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
+            </svg>
+          </div>
+          <h3 class="exp-card-title">Technical Sales</h3>
+          <div class="exp-card-desc"><span>Bridging technical solutions with business needs to close complex deals.</span></div>
+        </button>
+
+        <!-- Technical Writing -->
+        <button class="exp-card group" data-color="gold">
+          <div class="exp-card-icon bg-gold/10 text-gold group-[.active]:bg-gold group-[.active]:text-timber">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+            </svg>
+          </div>
+          <h3 class="exp-card-title">Technical Writing</h3>
+          <div class="exp-card-desc"><span>Crafting clear documentation, tutorials, and guides that developers love to read.</span></div>
+        </button>
+
+        <!-- Content Creation -->
+        <button class="exp-card group" data-color="timber">
+          <div class="exp-card-icon bg-timber/10 text-timber group-[.active]:bg-timber group-[.active]:text-cream">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+            </svg>
+          </div>
+          <h3 class="exp-card-title">Content Creation</h3>
+          <div class="exp-card-desc"><span>Producing engaging videos, articles, and media that educate and inspire.</span></div>
+        </button>
       </div>
     </div>
   </section>
+
+  <script>
+    document.querySelectorAll('.exp-card').forEach(card => {
+      card.addEventListener('click', () => {
+        const wasActive = card.classList.contains('active');
+        document.querySelectorAll('.exp-card').forEach(c => c.classList.remove('active'));
+        if (!wasActive) {
+          card.classList.add('active');
+        }
+      });
+    });
+  </script>
 
   <!-- Life Outside Code -->
   <section class="bg-timber text-cream py-20">
