@@ -3,9 +3,12 @@ title: "GitHub Status Checks and Branch Protection Made Easy"
 description: "Use branch protection rules to ensure quality contributions to your repos"
 pubDate: 2022-02-20
 author: "Bobby Galli"
+heroImage: "/pictures/blog/github-status-checks-and-branch-protection-made-easy/hero.jpg"
 categories: ["Software Development"]
 tags: ["github", "continuous-integration", "open-source", "programming", "software-engineering"]
 ---
+
+*Originally published in [Better Programming](https://medium.com/better-programming/github-status-checks-and-branch-protection-made-easy-b70d6d9ffc76)*
 
 GitHub provides a suite of options, allowing you to determine specific criteria to be met before a pull request can be merged into your repository. This article will outline how to configure a [branch protection rule](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/defining-the-mergeability-of-pull-requests/managing-a-branch-protection-rule) that requires pull requests to be reviewed and a [status check](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/collaborating-on-repositories-with-code-quality-features/about-status-checks) to ensure tests are run in various environments. In less time than it takes to drink a cup of coffee, you can dramatically reduce the risk of rogue merges wreaking havoc on your code.
 
@@ -15,7 +18,11 @@ The first step to guarding the kingdom is to add a [branch protection rule](http
 
 Add your first rule by clicking the Settings tab on your repos' GitHub page and navigating to the Branches section. Take note of your Default Branch (usually `main`) and click Add Rule.
 
+![GitHub Repo Branch Settings Menu](/pictures/blog/github-status-checks-and-branch-protection-made-easy/branches-settings.png)
+
 Enter `main` into the **Branch name pattern** input and hit **Enter** or click **Save Changes**.
+
+![GitHub Branch Protection Rule](/pictures/blog/github-status-checks-and-branch-protection-made-easy/branch-protection-rule.png)
 
 Congrats! You have just defined `main` as a protected branch. In the next step, you will begin to define the criteria that must be met for changes to be merged into your protected branch.
 
@@ -24,6 +31,8 @@ Congrats! You have just defined `main` as a protected branch. In the next step, 
 When a review is required, someone with push access to your repo must give an open pull request their blessing before the pull request can be merged into a protected branch. Requiring a pull request review is a great way to reduce the number of bugs introduced, as it ensures someone with experience working in your repo has inspected the change and asked questions where appropriate.
 
 To require pull requests be reviewed, click the checkbox next to **Require a pull request before merging**. Be sure to also click the checkbox next to "Require approvals".
+
+![Require Approvals for Pull Requests](/pictures/blog/github-status-checks-and-branch-protection-made-easy/require-approvals.png)
 
 Awesome! When a pull request is opened, the **Merge** button will be disabled until at least one contributor has reviewed and approved the changes. In the final step, we will add a [status check](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/collaborating-on-repositories-with-code-quality-features/about-status-checks) to ensure a specific action has been run successfully.
 
@@ -58,6 +67,10 @@ If you're not developing with Node.js you'll have to modify `ci.yml` to work wit
 
 To require a clean test run before a pull request can be merged, navigate back to your repo's **Settings** page. Click the checkbox next to **Require status checks to pass before merging**. Search for `ci` in the **Search for status checks in the last week for this repository** input field and click the search result to enable the status check.
 
+![Require Status Checks for Protected Branches](/pictures/blog/github-status-checks-and-branch-protection-made-easy/require-status-checks.png)
+
 Nice! If you open a pull request, you should notice that the merge button won't turn green until the status checks are complete and the pull request has been reviewed.
+
+![Pull Request with Reviews and Status Checks](/pictures/blog/github-status-checks-and-branch-protection-made-easy/pull-request-checks.png)
 
 **Want to Connect?** If you found the information in this tutorial useful, please follow me on [X](https://x.com/bobbyg603).
