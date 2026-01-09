@@ -23,7 +23,7 @@ Polyfills allow software developers to provide new features to old browsers. A p
 
 Recently we came across the following stack trace in our error reporting tool, [BugSplat](https://bugsplat.com/).
 
-*randomUUID is not a function*
+![randomUUID is not a function](/pictures/blog/how-to-build-an-angular-polyfill/randomuuid-error.png)
 
 We had recently removed the [uuid](https://www.npmjs.com/package/uuid) package in favor of using the native `crypto.randomUUID` function provided by most browsers. Unfortunately, removing the uuid package meant our users with older browsers saw `TypeError: globalThis.crypto.randomUUID is not a function`. In general, browser development teams are going to write better, faster versions of things than library developers. Knowing this, we designed our web app to prefer the browser implementation of `randomUUID`, and add a UUID generation function if the browser implementation didn't exist.
 
@@ -99,7 +99,7 @@ You might also want to delete your `.angular` directory just to be sure that eve
 
 You can test your fix by installing Firefox 93, and turning off auto-update in the settings menu. You'll also want to verify everything runs correctly in a browser that doesn't need the polyfill.
 
-*Hitting a Breakpoint in polyfills.ts in Firefox 93*
+![Hitting a Breakpoint in polyfills.ts in Firefox 93](/pictures/blog/how-to-build-an-angular-polyfill/firefox-breakpoint.png)
 
 If you'd like to allow others to use your polyfill, you can release your polyfill via [npm](https://www.npmjs.com/). To create a package others can install, create a new project using `npm init`.
 
@@ -108,6 +108,8 @@ mkdir your-polyfill && cd your-polyfill && npm init
 ```
 
 Make the entry point `index.mjs` or add `"type": "module",` to your `package.json` file. You can also configure TypeScript and build for both ESM and CommonJS. Adding a unit test to your repo is also a good idea!
+
+![Example Polyfill Project Structure](/pictures/blog/how-to-build-an-angular-polyfill/project-structure.png)
 
 The following is a modified snippet of the polyfill from above that adds an export to assist with unit testing.
 

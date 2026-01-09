@@ -168,6 +168,8 @@ The full code snippet with the handler code is available in the [companion repo]
 
 Now that we've written our tool, let's run it with [VS Code](https://code.visualstudio.com/) to ensure it works. When you open the folder containing `Squeeze.csproj` you should see the following prompt.
 
+![VS Code C# Required Assets](/pictures/blog/crash-course-in-dotnet-tools/vs-code-required-assets.png)
+
 Click the Yes button to add `launch.json` and `tasks.json` to the `.vscode` folder at the root of your repo. If this prompt doesn't appear you can copy the files from the [companion repo](https://github.com/bobbyg603/zippy/tree/main/.vscode).
 
 Modify `launch.json` so that it passes arguments to our program at runtime.
@@ -181,6 +183,8 @@ Modify `launch.json` so that it passes arguments to our program at runtime.
 ```
 
 Set a breakpoint in your `handler` function and start the debugger.
+
+![VS Code Debugger Breakpoint](/pictures/blog/crash-course-in-dotnet-tools/vs-code-debugger-breakpoint.gif)
 
 It works! Let's publish the tool to NuGet and finish strong.
 

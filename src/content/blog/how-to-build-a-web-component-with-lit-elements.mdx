@@ -35,6 +35,8 @@ To get started, we will create a project based on the [LitElement TypeScript sta
 
 Let's start by copying the template to our GitHub account.
 
+![Copy the template repo to your GitHub account](/pictures/blog/how-to-build-a-web-component-with-lit-elements/copy-template-repo.gif)
+
 If you're interested in minimal setup, you can also use [npm init @open-wc](https://open-wc.org/guides/developing-components/getting-started/) to start your project.
 
 Next, clone the repo you created and install the project's dependencies. Here's how to do that:
@@ -61,6 +63,8 @@ npm run serve
 
 The second command should present a URL to open in your web browser. Navigate to the specified URL, click the Component Demo link and ensure that you see something that resembles the following.
 
+![Lit element starter component](/pictures/blog/how-to-build-a-web-component-with-lit-elements/lit-element-starter.png)
+
 Nice! You've successfully built your first web component.
 
 Before we move on, let's also look at the documentation that the template generates. First, build the docs with this command:
@@ -84,6 +88,8 @@ npm run docs:serve
 ```
 
 Navigate to the URL listed in the terminal window. You should see something that resembles the following:
+
+![Generated docs for Lit Element](/pictures/blog/how-to-build-a-web-component-with-lit-elements/generated-docs.png)
 
 Excellent! We've got all the tools we need to build a new web component. In the next section, we'll take a deep dive and learn about the inner workings of the LitElement TypeScript starter repo.
 
@@ -204,6 +210,8 @@ First, we'll make a few tweaks to the starter template to improve the developer 
 
 After completing the next section, you'll have built something that resembles the following.
 
+![Medium feed tutorial web component](/pictures/blog/how-to-build-a-web-component-with-lit-elements/medium-feed-demo.gif)
+
 ## Blast Off
 
 The default template configuration outputs all the build artifacts in the same folder as our source code which is pretty annoying. We can change that behavior by updating .eleventy.cjs, .gitignore, dev/index.html, rollup.config.js, tsconfig.json, web-test-runner.config.js, and package.json. If you'd like help updating your configuration to build to a dist folder, please view this [diff](https://github.com/bobbyg603/lit-element-starter-ts/commit/5cd4995a9133887a84d571161cf884974a85e9b2).
@@ -211,6 +219,8 @@ The default template configuration outputs all the build artifacts in the same f
 Please read on if you're not bothered by these files in your working area!
 
 Let's rename the my-element component. You can leverage your IDE's search to ensure you update all the code references from MyElement to MediumFeed, as well as the template references to my-element to medium-feed, and rename the files my-element.ts and my-element_test.ts to medium-card.ts and medium-feed_test.ts respectively.
+
+![Example find and replace query in VS Code](/pictures/blog/how-to-build-a-web-component-with-lit-elements/find-replace-query.png)
 
 You can view this and compare your changes with this [diff](https://github.com/bobbyg603/lit-element-starter-ts/commit/f53a59e59bec32675e68d958d5ec98caac5d7b76) to check your work.
 
@@ -221,6 +231,8 @@ In the code above, we've added a comment that describes the component and define
 Run npm run build:watch in one terminal and run npm run serve in another terminal. When the build finishes, navigate to the URL displayed in the terminal, usually https://localhost:8000.
 
 The code from the snippet above should yield the following.
+
+![Medium feed component](/pictures/blog/how-to-build-a-web-component-with-lit-elements/medium-feed-component.png)
 
 This is a pretty good-looking web component, but the code is unwieldy and will prove hard to test. Let's extract some pieces from this web component and explain how they work. We'll extract the thumbnail, header, body, footer pieces to build a generic card that we can use in the medium-feed component.
 
@@ -293,6 +305,8 @@ A concrete example of testing up to the medium-card component's boundaries can b
 It's important to note that testing to the boundary only works if you can leverage the compiler to ensure [type-safety](https://en.wikipedia.org//wiki/Type_safety). When you change a property name in a child component, you need some warning or error that prompts you to update any references in the parent. To ensure type safety in our tests, we can use the as keyword to add a [type-assertion](https://www.typescriptlang.org/docs/handbook/2/everyday-types.html#type-assertions) to the result of querySelector.
 
 Since the querySelector result is properly typed, changing the property header to title in medium-card-header yields a compile error. Additionally, in VS Code, you use the [Rename Symbol](https://code.visualstudio.com/docs/editor/refactoring#_rename-symbol) feature to update all references safely header to title and avoid the problem entirely!
+
+![Medium header type safety example](/pictures/blog/how-to-build-a-web-component-with-lit-elements/type-safety-example.png)
 
 Now that we've thoroughly tested the medium-card component, let's take a look at our medium-feed component.
 

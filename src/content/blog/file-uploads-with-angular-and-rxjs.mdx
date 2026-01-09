@@ -121,6 +121,8 @@ export class FilesComponent {
 }
 ```
 
+![Files Table Checkpoint](/pictures/blog/file-uploads-with-angular-and-rxjs/files-table-checkpoint.png)
+
 ### List Uploaded Files
 
 So far we've built a table for displaying files and populated it with some dummy data. Let's display the real list of files by making a GET request to the /files endpoint on our server.
@@ -235,6 +237,8 @@ onFilesDropped(files: NgxFileDropEntry[]) {
 }
 ```
 
+![File Drop Checkpoint](/pictures/blog/file-uploads-with-angular-and-rxjs/file-drop-checkpoint.gif)
+
 ### Getting the File Object
 
 Before we can start the file upload we'll need to create an observable stream that emits each file from the NgxFileDropEntry array. Getting the File object from NgxFileDropEntry is a bit tricky because it's passed as a parameter into a callback function.
@@ -300,6 +304,8 @@ Notice we are now mapping file$ to the result of httpClient.post and this time, 
 
 The events we are most interested in have type `HttpEventType.UploadProgress` or `type: 1`.
 
+![Upload Progress Events](/pictures/blog/file-uploads-with-angular-and-rxjs/upload-progress-events.png)
+
 ### Filtering Events
 
 For now, let's create a type-guard. The type guard will both allow us to filter out events that are not progress events, and indicate to TypeScript that the type of the input to the next operator will be HttpUploadProgressEvent:
@@ -322,6 +328,8 @@ filter(isUploadProgressEvent)
 ```
 
 Please note that there aren't many upload events because you're uploading to a server hosted on your local machine. You will see more upload events when the server is hosted across the internet.
+
+![Filtered Upload Progress Events](/pictures/blog/file-uploads-with-angular-and-rxjs/filtered-upload-progress-events.png)
 
 ### Completing the Upload Observable Stream
 
@@ -472,6 +480,8 @@ Now that we have completed the UploadsComponent let's add it to our app.componen
 <app-uploads [uploads]="uploads$ | async"></app-uploads>
 ```
 
+![Upload Progress Bars](/pictures/blog/file-uploads-with-angular-and-rxjs/upload-progress-bars.gif)
+
 ### Refreshing the List
 
 The last piece of the puzzle is to fetch a new list of uploaded files when the upload has completed. This can be accomplished using a BehaviorSubject and the finalize operator.
@@ -498,8 +508,12 @@ The finalize operator gets called when an observable stream completes. Let's hav
 finalize(() => this.getFilesSubject.next())
 ```
 
+![File Upload with Progress and Refresh](/pictures/blog/file-uploads-with-angular-and-rxjs/file-upload-with-refresh.gif)
+
 ## Congratulations!
 
 Thanks for following along! In the future, I hope to release part 2 of this tutorial that explains how you can add a modal dialog, move the upload logic into a "smart" component, add files to an upload that is already in progress, and make the app look more professional.
+
+![Future File Upload](/pictures/blog/file-uploads-with-angular-and-rxjs/future-file-upload.gif)
 
 **Want to Connect?** If you found the information in this tutorial useful please follow me on [GitHub](https://github.com/bobbyg603), and subscribe to my [YouTube](https://www.youtube.com/c/bobbyg603) channel.
