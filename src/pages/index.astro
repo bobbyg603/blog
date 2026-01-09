@@ -280,47 +280,214 @@ const posts = (await getCollection('blog'))
   </script>
 
   <!-- Life Outside Code -->
-  <section class="bg-timber text-cream py-20">
+  <section class="life-outside-section text-cream py-16 md:py-20 overflow-hidden">
     <div class="max-w-6xl mx-auto px-4">
-      <h2 class="text-3xl md:text-4xl font-display font-bold text-center mb-4">
+      <h2 class="text-3xl md:text-4xl font-display font-bold text-center mb-3" style="color: #f5f0e6 !important;">
         Life Outside the Terminal
       </h2>
-      <p class="text-cream/80 text-center max-w-2xl mx-auto mb-12">
+      <p class="text-center max-w-2xl mx-auto mb-10 md:mb-14 text-sm md:text-base" style="color: #f5f0e6 !important;">
         When I'm not pushing commits, you'll find me in the great outdoors or spending time with my wife Cassie.
       </p>
 
-      <div class="grid md:grid-cols-4 gap-6">
-        <div class="text-center">
-          <div class="w-32 h-32 mx-auto mb-4 rounded-full overflow-hidden border-4 border-cream/20">
-            <img src="/pictures/bobby-timmy-golfing.jpeg" alt="Golfing" class="w-full h-full object-cover" />
+      <div class="photo-collage">
+        <div class="polaroid polaroid-1">
+          <div class="polaroid-inner">
+            <img src="/pictures/bobby-timmy-golfing.jpeg" alt="Golfing" />
+            <span class="polaroid-caption">Golf</span>
           </div>
-          <h3 class="font-semibold mb-1">Golf</h3>
-          <p class="text-cream/60 text-sm">Chasing birdies</p>
         </div>
-        <div class="text-center">
-          <div class="w-32 h-32 mx-auto mb-4 rounded-full overflow-hidden border-4 border-cream/20">
-            <img src="/pictures/bobby-snowboard.jpeg" alt="Snowboarding" class="w-full h-full object-cover" />
+        <div class="polaroid polaroid-2">
+          <div class="polaroid-inner">
+            <img src="/pictures/bobby-snowboard.jpeg" alt="Snowboarding" />
+            <span class="polaroid-caption">Snowboarding</span>
           </div>
-          <h3 class="font-semibold mb-1">Snowboarding</h3>
-          <p class="text-cream/60 text-sm">In the mountains</p>
         </div>
-        <div class="text-center">
-          <div class="w-32 h-32 mx-auto mb-4 rounded-full overflow-hidden border-4 border-cream/20">
-            <img src="/pictures/bobby-cassie-loon.jpeg" alt="With Cassie" class="w-full h-full object-cover" />
+        <div class="polaroid polaroid-3">
+          <div class="polaroid-inner">
+            <img src="/pictures/bobby-cassie-block-island.jpeg" alt="Block Island with Cassie" />
+            <span class="polaroid-caption">Adventures</span>
           </div>
-          <h3 class="font-semibold mb-1">Adventures</h3>
-          <p class="text-cream/60 text-sm">With my wife</p>
         </div>
-        <div class="text-center">
-          <div class="w-32 h-32 mx-auto mb-4 rounded-full overflow-hidden border-4 border-cream/20">
-            <img src="/pictures/bobby-barn.jpeg" alt="At the barn" class="w-full h-full object-cover" />
+        <div class="polaroid polaroid-4">
+          <div class="polaroid-inner">
+            <img src="/pictures/bobby-barn.jpeg" alt="At the barn" />
+            <span class="polaroid-caption">The Barn</span>
           </div>
-          <h3 class="font-semibold mb-1">The Barn</h3>
-          <p class="text-cream/60 text-sm">At the barn</p>
         </div>
       </div>
     </div>
   </section>
+
+  <style>
+    .life-outside-section {
+      position: relative;
+      background: linear-gradient(
+        135deg,
+        #3d2914 0%,
+        #5c4023 25%,
+        #3d2914 50%,
+        #8b2500 75%,
+        #3d2914 100%
+      );
+      background-size: 400% 400%;
+      animation: gradientShift 15s ease infinite;
+    }
+
+    @keyframes gradientShift {
+      0%, 100% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+    }
+
+    .photo-collage {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1rem;
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 0 1rem;
+    }
+
+    @media (min-width: 768px) {
+      .photo-collage {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 0;
+        max-width: none;
+        padding: 2rem 0;
+        min-height: 320px;
+        position: relative;
+      }
+    }
+
+    .polaroid {
+      background: #f5f0e6;
+      padding: 0.5rem 0.5rem 0.25rem;
+      border-radius: 4px;
+      box-shadow:
+        0 4px 6px rgba(0, 0, 0, 0.3),
+        0 10px 20px rgba(0, 0, 0, 0.2);
+      transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease;
+    }
+
+    .polaroid-inner {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .polaroid img {
+      width: 100%;
+      aspect-ratio: 1;
+      object-fit: cover;
+      border-radius: 2px;
+    }
+
+    .polaroid-caption {
+      display: block;
+      text-align: center;
+      font-family: var(--font-display);
+      font-size: 0.85rem;
+      color: #3d2914;
+      padding: 0.5rem 0 0.25rem;
+      font-weight: 600;
+    }
+
+    /* Mobile layout */
+    @media (max-width: 767px) {
+      .polaroid {
+        transform: rotate(0deg);
+      }
+
+      .polaroid:hover {
+        transform: scale(1.02);
+        box-shadow:
+          0 8px 12px rgba(0, 0, 0, 0.4),
+          0 16px 32px rgba(0, 0, 0, 0.3);
+      }
+    }
+
+    /* Desktop scattered layout */
+    @media (min-width: 768px) {
+      .polaroid {
+        position: absolute;
+        width: 180px;
+        padding: 0.75rem 0.75rem 0.35rem;
+      }
+
+      .polaroid-caption {
+        font-size: 0.95rem;
+        padding: 0.6rem 0 0.3rem;
+      }
+
+      .polaroid-1 {
+        left: 10%;
+        transform: rotate(-8deg);
+        animation: float1 6s ease-in-out infinite;
+        z-index: 1;
+      }
+
+      .polaroid-2 {
+        left: 30%;
+        transform: rotate(5deg);
+        animation: float2 7s ease-in-out infinite;
+        z-index: 2;
+      }
+
+      .polaroid-3 {
+        right: 30%;
+        transform: rotate(-4deg);
+        animation: float3 5.5s ease-in-out infinite;
+        z-index: 3;
+      }
+
+      .polaroid-4 {
+        right: 10%;
+        transform: rotate(7deg);
+        animation: float4 6.5s ease-in-out infinite;
+        z-index: 2;
+      }
+
+      .polaroid:hover {
+        transform: rotate(0deg) scale(1.15);
+        box-shadow:
+          0 12px 24px rgba(0, 0, 0, 0.4),
+          0 24px 48px rgba(0, 0, 0, 0.3);
+        z-index: 10;
+        animation-play-state: paused;
+      }
+
+      @keyframes float1 {
+        0%, 100% { transform: rotate(-8deg) translateY(0); }
+        50% { transform: rotate(-6deg) translateY(-12px); }
+      }
+
+      @keyframes float2 {
+        0%, 100% { transform: rotate(5deg) translateY(0); }
+        50% { transform: rotate(7deg) translateY(-10px); }
+      }
+
+      @keyframes float3 {
+        0%, 100% { transform: rotate(-4deg) translateY(0); }
+        50% { transform: rotate(-2deg) translateY(-14px); }
+      }
+
+      @keyframes float4 {
+        0%, 100% { transform: rotate(7deg) translateY(0); }
+        50% { transform: rotate(5deg) translateY(-8px); }
+      }
+    }
+
+    @media (min-width: 1024px) {
+      .polaroid {
+        width: 200px;
+      }
+
+      .polaroid-1 { left: 12%; }
+      .polaroid-2 { left: 32%; }
+      .polaroid-3 { right: 32%; }
+      .polaroid-4 { right: 12%; }
+    }
+  </style>
 
   <!-- Latest Posts -->
   {posts.length > 0 && (
