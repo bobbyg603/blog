@@ -21,17 +21,17 @@ export async function getStaticPaths() {
 const { tag, posts } = Astro.props;
 ---
 
-<BaseLayout title={`Posts tagged "${tag}" | Bobby Galli`}>
+<BaseLayout title={`${tag} | Bobby Galli`}>
   <div class="max-w-6xl mx-auto px-4 py-12">
     <header class="text-center mb-12">
       <a href="/blog" class="text-barn-red hover:text-barn-red-light text-sm font-medium mb-4 inline-block">
         &larr; All Posts
       </a>
       <h1 class="text-4xl font-display font-bold text-timber">
-        #{tag}
+        {tag}
       </h1>
       <p class="text-stone mt-2">
-        {posts.length} post{posts.length !== 1 ? 's' : ''} tagged with "{tag}"
+        {posts.length} post{posts.length !== 1 ? 's' : ''} in this category
       </p>
     </header>
 

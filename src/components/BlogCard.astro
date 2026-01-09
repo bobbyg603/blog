@@ -7,10 +7,10 @@ interface Props {
 }
 
 const { post } = Astro.props;
-const { title, description, pubDate, heroImage, tags, categories } = post.data;
+const { title, description, pubDate, heroImage, tags } = post.data;
 ---
 
-<article class="card overflow-hidden group">
+<a href={`/blog/${post.id}`} class="card overflow-hidden group block">
   {heroImage && (
     <div class="relative h-48 overflow-hidden">
       <img
@@ -18,10 +18,10 @@ const { title, description, pubDate, heroImage, tags, categories } = post.data;
         alt={title}
         class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
       />
-      {categories && categories.length > 0 && (
+      {tags && tags.length > 0 && (
         <div class="absolute top-3 left-3">
           <span class="bg-barn-red text-cream text-xs font-semibold px-3 py-1 rounded-full">
-            {categories[0]}
+            {tags[0]}
           </span>
         </div>
       )}
@@ -32,19 +32,10 @@ const { title, description, pubDate, heroImage, tags, categories } = post.data;
       <FormattedDate date={pubDate} />
     </div>
     <h3 class="text-xl font-display font-bold text-timber mb-2 group-hover:text-barn-red transition-colors">
-      <a href={`/blog/${post.id}`} class="hover:underline">
-        {title}
-      </a>
+      {title}
     </h3>
-    <p class="text-stone text-sm mb-4 line-clamp-2">
+    <p class="text-stone text-sm line-clamp-2">
       {description}
     </p>
-    {tags && tags.length > 0 && (
-      <div class="flex flex-wrap gap-1">
-        {tags.slice(0, 3).map((tag) => (
-          <span class="tag text-xs">#{tag}</span>
-        ))}
-      </div>
-    )}
   </div>
-</article>
+</a>

@@ -8,7 +8,7 @@ interface Props {
 }
 
 const { post } = Astro.props;
-const { title, description, pubDate, updatedDate, heroImage, author, tags, categories } = post.data;
+const { title, description, pubDate, updatedDate, heroImage, author, tags } = post.data;
 ---
 
 <BaseLayout title={`${title} | Bobby Galli`} description={description} image={heroImage}>
@@ -26,13 +26,13 @@ const { title, description, pubDate, updatedDate, heroImage, author, tags, categ
 
     <!-- Article Header -->
     <header class="mb-8">
-      <!-- Categories -->
-      {categories && categories.length > 0 && (
+      <!-- Tags -->
+      {tags && tags.length > 0 && (
         <div class="flex flex-wrap gap-2 mb-4">
-          {categories.map((category) => (
-            <span class="text-xs font-semibold uppercase tracking-wider text-barn-red">
-              {category}
-            </span>
+          {tags.map((tag) => (
+            <a href={`/blog/tag/${tag}`} class="text-xs font-semibold uppercase tracking-wider text-barn-red hover:text-barn-red-light transition-colors">
+              {tag}
+            </a>
           ))}
         </div>
       )}
@@ -64,17 +64,6 @@ const { title, description, pubDate, updatedDate, heroImage, author, tags, categ
           </div>
         )}
       </div>
-
-      <!-- Tags -->
-      {tags && tags.length > 0 && (
-        <div class="flex flex-wrap gap-2 mt-4">
-          {tags.map((tag) => (
-            <a href={`/blog/tag/${tag}`} class="tag">
-              #{tag}
-            </a>
-          ))}
-        </div>
-      )}
     </header>
 
     <!-- Article Content -->
@@ -95,4 +84,47 @@ const { title, description, pubDate, updatedDate, heroImage, author, tags, categ
       </a>
     </div>
   </article>
+
+  <!-- Lightbox -->
+  <div id="lightbox" class="lightbox">
+    <button class="lightbox-close" aria-label="Close lightbox">
+      <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+      </svg>
+    </button>
+    <img id="lightbox-img" src="" alt="" />
+  </div>
+
+  <script>
+    function initLightbox() {
+      const lightbox = document.getElementById('lightbox');
+      const lightboxImg = document.getElementById('lightbox-img') as HTMLImageElement;
+      const proseImages = document.querySelectorAll('.prose img');
+
+      proseImages.forEach((img) => {
+        img.addEventListener('click', () => {
+          const imgElement = img as HTMLImageElement;
+          lightboxImg.src = imgElement.src;
+          lightboxImg.alt = imgElement.alt;
+          lightbox?.classList.add('active');
+          document.body.style.overflow = 'hidden';
+        });
+      });
+
+      lightbox?.addEventListener('click', () => {
+        lightbox.classList.remove('active');
+        document.body.style.overflow = '';
+      });
+
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && lightbox?.classList.contains('active')) {
+          lightbox.classList.remove('active');
+          document.body.style.overflow = '';
+        }
+      });
+    }
+
+    initLightbox();
+    document.addEventListener('astro:after-swap', initLightbox);
+  </script>
 </BaseLayout>

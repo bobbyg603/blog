@@ -10,8 +10,7 @@ const blog = defineCollection({
     updatedDate: z.coerce.date().optional(),
     author: z.string().default('Bobby Galli'),
     heroImage: z.string().optional(),
-    categories: z.array(z.string()).default([]),
-    tags: z.array(z.string()).default([]),
+    tags: z.array(z.enum(['Personal', 'Technology', 'Tutorial', 'Development'])).default([]),
     draft: z.boolean().default(false),
   }),
 });

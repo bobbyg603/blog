@@ -7,9 +7,11 @@ const posts = (await getCollection('blog'))
   .filter((post) => !post.data.draft)
   .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
 
-// Get unique tags and categories
-const allTags = [...new Set(posts.flatMap((post) => post.data.tags))];
-const allCategories = [...new Set(posts.flatMap((post) => post.data.categories))];
+// Get unique tags (sorted to maintain consistent order)
+const tagOrder = ['Personal', 'Technology', 'Tutorial', 'Development'];
+const allTags = tagOrder.filter(tag =>
+  posts.some(post => post.data.tags.includes(tag))
+);
 ---
 
 <BaseLayout title="Blog | Bobby Galli" description="Thoughts on software development, AI, and life from Bobby Galli.">
@@ -24,19 +26,19 @@ const allCategories = [...new Set(posts.flatMap((post) => post.data.categories))
       </p>
     </header>
 
-    <!-- Categories Filter -->
-    {allCategories.length > 0 && (
+    <!-- Tag Filter -->
+    {allTags.length > 0 && (
       <div class="mb-8">
         <div class="flex flex-wrap justify-center gap-3">
           <a href="/blog" class="px-4 py-2 bg-timber text-cream rounded-full text-sm font-medium">
             All Posts
           </a>
-          {allCategories.map((category) => (
+          {allTags.map((tag) => (
             <a
-              href={`/blog/category/${category}`}
+              href={`/blog/tag/${tag}`}
               class="px-4 py-2 bg-cream-dark text-timber rounded-full text-sm font-medium hover:bg-sage-light transition-colors"
             >
-              {category}
+              {tag}
             </a>
           ))}
         </div>
@@ -62,20 +64,5 @@ const allCategories = [...new Set(posts.flatMap((post) => post.data.categories))
       </div>
     )}
 
-    <!-- Tags Cloud -->
-    {allTags.length > 0 && (
-      <aside class="mt-16 pt-16 border-t border-cream-dark">
-        <h3 class="text-lg font-display font-bold text-timber mb-4 text-center">
-          Browse by Tag
-        </h3>
-        <div class="flex flex-wrap justify-center gap-2">
-          {allTags.map((tag) => (
-            <a href={`/blog/tag/${tag}`} class="tag">
-              #{tag}
-            </a>
-          ))}
-        </div>
-      </aside>
-    )}
   </div>
 </BaseLayout>

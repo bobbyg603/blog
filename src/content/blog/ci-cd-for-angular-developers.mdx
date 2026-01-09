@@ -4,8 +4,7 @@ description: "Automate your releases with GitHub Actions"
 pubDate: 2022-02-24
 author: "Bobby Galli"
 heroImage: "/pictures/blog/ci-cd-for-angular-developers/hero.jpg"
-categories: ["Web Development"]
-tags: ["angular", "github-actions", "javascript", "web-development", "programming", "ci-cd"]
+tags: ["Tutorial", "Development"]
 ---
 
 *Originally published in [Better Programming](https://medium.com/better-programming/ci-cd-for-angular-developers-be9a1485d22b)*
@@ -181,6 +180,8 @@ npx semantic-release-cli setup
 
 The `setup` command will prompt you to input your credentials in order to configure your release. You'll need to generate a [GitHub token](https://github.com/settings/tokens/new?scopes=repo) with the `repo` scope. Also, you'll need to ensure your [2-FA settings](https://docs.npmjs.com/about-two-factor-authentication#two-factor-authentication-modes-on-npm) are set to `auth-only`.
 
+![Terminal Output for Semantic Release CLI](/pictures/blog/ci-cd-for-angular-developers/semantic-release-cli.png)
+
 Just to be safe, you should change your npm password after entering it into the prompt.
 
 Next, create a `.releaserc` file at the root of your project so that we can customize semantic-release. We will need to specify the `pkgRoot` directory in order for `@semantic-release/npm` to publish the correct list of files:
@@ -208,7 +209,11 @@ Next, we're going to publish our sample to a sub-directory in a [GitHub Pages us
 
 In order to publish to your GitHub Pages user site you'll need to generate a [personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token) with the `repo` scope. This token will allow GitHub Actions to publish the sample to your `username.github.io` user site.
 
+![New Personal Access Token with Repo Scope](/pictures/blog/ci-cd-for-angular-developers/personal-access-token.png)
+
 Once you've generated your token, add a `GH_TOKEN` [repository secret](https://docs.github.com/en/actions/security-guides/encrypted-secrets#creating-encrypted-secrets-for-a-repository) so the personal access token can be used by our deployment workflow.
+
+![Adding a GH_TOKEN Repository Secret](/pictures/blog/ci-cd-for-angular-developers/gh-token-secret.png)
 
 We now have all the pieces necessary to create our `.github/workflows/cd.yml` deployment workflow! This workflow will run for every push to our `main` branch and will publish a new version of our library to [npm](https://www.npmjs.com/package/@bobbyg603/ngx-toggle) and copy our sample to our [GitHub Pages user site](https://bobbyg603.github.io/ngx-toggle/):
 
@@ -252,6 +257,8 @@ jobs:
 Under the **Deploy** step you'll need to replace the values for `repository-name`, `folder`, and `target-folder` with values that are specific to your GitHub Pages repo and project.
 
 ## Celebrate Your Victory!
+
+![Celebration](/pictures/blog/ci-cd-for-angular-developers/celebration.gif)
 
 Congratulations!
 
