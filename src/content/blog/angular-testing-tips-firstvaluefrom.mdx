@@ -1,0 +1,256 @@
+---
+title: "Angular Testing Tips: FirstValueFrom"
+description: "Write Clearer and More Concise Tests With Angular and RxJS"
+pubDate: 2023-03-08
+author: "Bobby Galli"
+categories: ["Web Development"]
+tags: ["angular", "rxjs", "testing", "tips", "typescript"]
+---
+
+## Flexing
+
+Unit Testing is a lot like going to the gym, challenging and time-consuming, but ultimately leads to improved performance and a more robust system. Just as regular exercise helps to build strength and endurance, unit testing helps to identify and fix weaknesses in code, leading to more reliable software that better meets the needs of users and stakeholders. Testing might not be the most glamorous aspect of software development, but it is critical to building lasting systems and facilitating collaboration.
+
+A reference project that demonstrates how to use `firstValueFrom` is available on [GitHub](https://github.com/bobbyg603/ng-testing-tips-first-value-from).
+
+## The Problem
+
+According to the RxJS docs, an observable is "a lazily evaluated computation that can synchronously or asynchronously return zero to (potentially) infinite values from the time it's invoked onwards". To obtain values emitted by an observable, we call `subscribe` with a callback function. The callback function passed to `subscribe` is invoked each time the observable emits.
+
+Determining if observable will emit synchronously or asynchronously is not obvious, therefore, the following test can run and pass without verifying the expectation:
+
+```typescript
+it('#getObservableValue should return value from observable', () => {
+  service.getObservableValue().subscribe(value => {
+    expect(value).toBe('observable value');
+  });
+});
+```
+
+The implementation of `service.getObservableValue` could be either of the following:
+
+```typescript
+// Using Angular's HttpClient
+getObservableValue(): Observable<string> {
+  return this.httpClient.get('https://some-url.com');
+}
+
+// Using a third-party library based on fetch
+getObservableValue(): Observable<string> {
+  return from(this.someThirdPartyLibrary.fetch('https://some-url.com'));
+}
+```
+
+In the latter case, `someThirdPartyLibrary.fetch` returns a [promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise). The [from](https://rxjs.dev/api/index/function/from) function converts a promise into an observable, making the value easier to use inside of [RxJS operators](https://rxjs.dev/guide/operators). In a test, a mock of an HttpClient implementation and fetch implementation would resemble the following snippets (respectively):
+
+```typescript
+// Mock implementation of Angular's HttpClient
+const httpClient = jasmine.createSpyObj('HttpClient', ['get']);
+httpClient.get.and.returnValue(of('observable value'));
+
+// Mock implementation of a third-party library based on fetch
+const someThirdPartyLibrary = jasmine.createSpyObj('ThirdPartyLib', ['fetch']);
+someThirdPartyLibrary.fetch.and.resolveTo('observable value');
+```
+
+When mocking `HttpClient` a value is returned using the RxJS [of](https://rxjs.dev/api/index/function/of) function which emits a value synchronously. In the mock implementation of the third-party library, `resolveTo` is used and resolves a value asynchronously.
+
+A test that calls `subscribe` will execute the subscribe callback synchronously in the `HttpClient` case, but not the `fetch` case and jasmine will output a console error that the test has no expectations.
+
+Not good!
+
+## The Old Solution
+
+If you've read Angular testing documentation, you might recognize the following [snippet](https://angular.io/guide/testing-services#testing-services):
+
+```typescript
+it('#getObservableValue should return value from observable', (done: DoneFn) => {
+  service.getObservableValue().subscribe(value => {
+    expect(value).toBe('observable value');
+    done();
+  });
+});
+```
+
+The example above invokes the Jasmine `done` [callback](https://jasmine.github.io/tutorials/async#callbacks) to mark the test as completed. Calling `subscribe` and explicitly marking a test as done works in simple circumstances, but there are a few drawbacks.
+
+- Every developer writing tests has to remember to call `done`
+- The `done` call requires an extra line of code takes up vertical screen real estate
+- Calling `subscribe` nests expectations and breaks [Arrange, Act, Assert](https://automationpanda.com/2020/07/07/arrange-act-assert-a-pattern-for-writing-good-tests/)
+
+Additionally, when testing observable sequences, performing expectations on anything other than the first emitted value requires messy workarounds.
+
+## A Newer Solution
+
+[Asynchronous functions](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/async_function) allow us simplifying testing by writing code without callbacks. Converting a value emitted by an observable to a promise allows developers to leverage the `await` keyword to ensure that values are obtained and expectations are performed in the order they were written.
+
+Prior to RxJS 7.0, developers could call `toPromise` on an observable. As of version 7.0 RxJS has released 2 new helper functions `lastValueFrom` and `firstValueFrom`. We can use `await` and `firstValueFrom` to convert an observable to a promise and await a value without calling subscribe.
+
+We can simplify the test from the Angular docs by using async/await:
+
+```typescript
+it('#getObservableValue should return value from observable', async () => {
+  const value = await firstValueFrom(service.getObservableValue());
+  expect(value).toBe('observable value');
+});
+```
+
+The test can be simplified further by leveraging [expectAsync](https://jasmine.github.io/api/4.5/global.html#expectAsync):
+
+```typescript
+it('#getObservableValue should return value from observable', async () =>
+  expectAsync(firstValueFrom(service.getObservableValue()))
+    .toBeResolvedTo('observable value')
+);
+```
+
+The example above simplifies the test to a single expression, returning the result of `expectAsync` via an [arrow function expression](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Functions/Arrow_functions). Tests that don't use an arrow function expression will need to return or await `expectAsync` explicitly.
+
+## Outputs
+
+Converting observables to promises allows for some neat tricks when testing Angular [Output properties](https://angular.io/api/core/Output). For instance, we can create a promise and hang on to its reference in order to verify a value that's emitted at a later time.
+
+```typescript
+@Component({
+  selector: 'app-counter',
+  templateUrl: './counter.component.html',
+  styleUrls: ['./counter.component.scss']
+})
+export class CounterComponent {
+  @Output() countChange = new EventEmitter<number>();
+
+  count = 0;
+
+  onCountChange(newCount: number): void {
+    this.count = newCount;
+    this.countChange.emit(newCount);
+  }
+}
+```
+
+A test for `onCountChange` would look something like this:
+
+```typescript
+it('should emit updated count', async () => {
+  const newCount = 3;
+  const resultPromise = firstValueFrom(component.countChange);
+
+  component.onCountChange(newCount);
+  const result = await resultPromise;
+
+  expect(result).toEqual(newCount);
+});
+```
+
+Under the hood, `firstValueFrom` creates a subscription, and converts the observable to a promise that will resolve when the first value is emitted. We save the promise to the `resultPromise` variable, and get `result` by calling `onCountChange` and awaiting `resultPromise`.
+
+## Skip
+
+The [skip](https://rxjs.dev/api/index/function/skip) operator will skip a given number of emissions and can be used alongside `firstValueFrom` to verify a sequence of values is emitted by an observable. When paired with `firstValueFrom` we can run expectations against any value emitted by an observable.
+
+```typescript
+it('should emit count each time onCountChange is called', async () => {
+  const values = [1, 2];
+  const firstResultPromise = firstValueFrom(component.countChange);
+  const secondResultPromise = firstValueFrom(component.countChange.pipe(skip(1)));
+
+  values.forEach(value => component.onCountChange(value));
+
+  const firstResult = await firstResultPromise;
+  const secondResult = await secondResultPromise;
+
+  expect(firstResult).toEqual(values[0]);
+  expect(secondResult).toEqual(values[1]);
+});
+```
+
+## Take and ToArray
+
+Instead of using `skip` to test each emission separately, we can use the [take](https://rxjs.dev/api/operators/take) and [toArray](https://www.learnrxjs.io/learn-rxjs/operators/transformation/toarray) operators to ensure an observable emits a series of values.
+
+```typescript
+it('should emit count each time onCountChange is called', async () => {
+  const values = [1, 2, 3];
+  const resultPromise = firstValueFrom(
+    component.countChange
+      .pipe(
+        take(values.length),
+        toArray()
+      )
+  );
+
+  values.forEach(value => component.onCountChange(value));
+  const result = await resultPromise;
+
+  expect(result).toEqual(jasmine.arrayContaining(values));
+});
+```
+
+The `take` operator allows us to keep observable pipe's inner subscription active until `countChange` has emitted 3 values. Once 3 values have been emitted, the subscription completes, and `toArray` aggregates all the emitted values into an array.
+
+## Tick
+
+When using the [delay](https://rxjs.dev/api/operators/delay) or [interval](https://rxjs.dev/api/index/function/interval) operators, tests must simulate the passage of time in order to trick observables into emitting results. This next example uses the `delay` operator to simulate a slow network call in order to demonstrate a loading spinner.
+
+```typescript
+@Component({
+  selector: 'app-affirmations',
+  templateUrl: './affirmations.component.html',
+  styleUrls: ['./affirmations.component.scss']
+})
+export class AffirmationsComponent {
+  affirmation$: Observable<string>;
+  loading$: Observable<boolean>;
+
+  private affirmationSubject: Subject<void>;
+
+  constructor(private affirmationService: AffirmationsService) {
+    this.affirmationSubject = new BehaviorSubject<void>(null as any);
+
+    this.affirmation$ = this.affirmationSubject
+      .pipe(
+        switchMap(() => this.affirmationService.getAffirmation()),
+        delay(1000), // Simulate a slow network call
+        startWith('Loading...'),
+        share(),
+      );
+
+    const startLoading$ = this.affirmationSubject.pipe(map(() => true));
+    const stopLoading = this.affirmation$.pipe(map(() => false));
+    this.loading$ = merge(startLoading$, stopLoading);
+  }
+
+  onClick(): void {
+    this.affirmationSubject.next();
+  }
+}
+```
+
+To test that the correct value is emitted without delaying test execution, the [fakeAsync](https://angular.io/api/core/testing/fakeAsync) zone and `tick` function are used to simulate the passage of time.
+
+The following example stores a promise reference, simulates the passage of time, and ultimately verifies the correct result.
+
+```typescript
+it('should return an affirmation', fakeAsync(async () => {
+  const resultPromise = firstValueFrom(component.affirmation$.pipe(skip(1)));
+
+  tick(1000);
+  const result = await resultPromise;
+
+  expect(result).toEqual(affirmation);
+}));
+```
+
+The value from `startWith` is skipped via the `skip` operator. After calling `tick` the result promise resolves near-instantly and we can await a value from `resultPromise`. This test is wrapped in the `fakeAsync` zone so that `tick` can simulate the passage of time.
+
+## Further Investigation
+
+RxJS [Marble Diagrams](https://rxjs.dev/guide/testing/marble-testing) are another solution for testing observable sequences. Marble tests allow you to visually declare and run expectations against observable sequences. You can find an excellent explanation of how write marble tests [here](https://rxjs.dev/guide/testing/marble-testing).
+
+## Conclusion
+
+This article discussed using the RxJS `firstValueFrom` helper to convert observables into promises. By converting observables into promises, we wrote tests that are clear, concise, and flexible. We tested component Outputs, and explored how we can use `firstValueFrom` with the skip, take, and toArray operator functions to test observable sequences. Finally, we explored the `fakeAsync` zone, saving promise references to variables, and using `tick` to simulate the passage of time.
+
+Thanks for reading!
+
+**Want to Connect?** If you found the information in this tutorial useful please subscribe on [Medium](https://bobbyg603.medium.com), follow me on [X](https://x.com/bobbyg603), and/or subscribe to my [YouTube](https://youtube.com/c/bobbyg603) channel.

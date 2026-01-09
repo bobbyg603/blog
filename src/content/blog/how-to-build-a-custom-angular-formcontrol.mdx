@@ -1,0 +1,146 @@
+---
+title: "How to Build a Custom Angular FormControl"
+description: "Create Masterful Angular Forms with ControlValueAccessor"
+pubDate: 2023-02-21
+author: "Bobby Galli"
+categories: ["Web Development"]
+tags: ["angular", "forms", "web-development", "typescript", "tutorial"]
+---
+
+*"Angular Forms are a vital tool in the web developer's arsenal, providing the power to seamlessly manage user input and validation with grace and ease."* — SenseiGPT
+
+## Forms
+
+With Angular Forms, web developers gain access to a wealth of benefits that make handling user input a breeze. Angular makes it easy to [create dynamic forms](https://angular.io/guide/reactive-forms#creating-dynamic-forms), [validate user input](https://angular.io/guide/reactive-forms#validating-form-input), and [access form properties](https://angular.io/api/forms/FormGroup) such as touched, valid, and submitted. With the [release](https://blog.angular.io/angular-v14-is-now-available-391a6db736af#e02b) of Angular 14, forms have become [type-safe](https://medium.com/better-programming/how-to-build-a-strongly-typed-angular-14-super-form-86837965a0e5) from tip to toe, and can be used to easily implement complicated input schemes. Forms are a powerful tool for handling user input easily and effectively.
+
+This article demonstrates how to use [ControlValueAccessor](https://angular.io/api/forms/ControlValueAccessor) to create a custom component that can be used in a reactive form. A sample implementation of a custom `FormControl` can be found on [GitHub](https://github.com/bobbyg603/ngx-toggle/blob/main/projects/ngx-toggle/src/lib/components/ngx-toggle/ngx-toggle.component.ts).
+
+## Begin
+
+Developers can bind [reactive forms](https://angular.io/guide/reactive-forms) to [input](https://angular.io/api/forms/FormControlName#description), [radio](https://angular.io/api/forms/RadioControlValueAccessor#description), and [select](https://angular.io/api/forms/SelectControlValueAccessor#description) elements via the [FormControlName](https://angular.io/api/forms/FormControlName) directive. Angular also provides tooling that allows developers to create easily new [FormControls](https://angular.io/api/forms/FormControl) specific to the needs of their applications via [ControlValueAccessor](https://angular.io/api/forms/ControlValueAccessor).
+
+To get started, create a new component via the Angular CLI.
+
+```bash
+ng g c ngx-toggle
+```
+
+Add a [provider](https://angular.io/guide/providers) for [NG_VALUE_ACCESSOR](https://angular.io/api/forms/NG_VALUE_ACCESSOR), with an [ExistingProvider](https://angular.io/api/core/ExistingProvider) that utilizes a [forwardRef](https://angular.io/api/core/forwardRef) to the component's `@Component` decorator.
+
+```typescript
+@Component({
+  selector: 'ngx-toggle',
+  templateUrl: './ngx-toggle.component.html',
+  styleUrls: ['./ngx-toggle.component.scss'],
+  providers: [{
+    provide: NG_VALUE_ACCESSOR,
+    useExisting: forwardRef(() => NgxToggleComponent),
+    multi: true
+  }]
+})
+export class NgxToggleComponent {
+  ...
+}
+```
+
+Update the component's class definition so that it implements `ControlValueAccessor`.
+
+```typescript
+export class NgxToggleComponent implements ControlValueAccessor {
+  ...
+}
+```
+
+Implement the `ControlValueAccessor` interface by defining the functions [writeValue](https://angular.io/api/forms/ControlValueAccessor#writeValue), [registerOnChange](https://angular.io/api/forms/ControlValueAccessor#registerOnChange), [registerOnTouched](https://angular.io/api/forms/ControlValueAccessor#registerOnTouched), and (optionally) [setDisabledState](https://angular.io/api/forms/ControlValueAccessor#setDisabledState). By implementing the interface using the [VS Code Intellisense](https://code.visualstudio.com/docs/editor/intellisense) suggestion we get the following:
+
+```typescript
+registerOnChange(fn: any): void {
+  throw new Error('Method not implemented.');
+}
+
+registerOnTouched(fn: any): void {
+  throw new Error('Method not implemented.');
+}
+
+setDisabledState?(isDisabled: boolean): void {
+  throw new Error('Method not implemented.');
+}
+
+writeValue(obj: any): void {
+  throw new Error('Method not implemented.');
+}
+```
+
+Let's add some types and implement the interface properly.
+
+```typescript
+export class NgxToggleComponent implements ControlValueAccessor {
+  @Input() id = 'ngx-toggle';
+  @Input() checked = false;
+  @Input() disabled = false;
+
+  @Output() checkedChange = new EventEmitter<boolean>();
+
+  onChange: OnChangeFn = () => {};
+  onTouched: OnTouchedFn = () => {};
+
+  onClick(event: MouseEvent): void {
+    const checked = (event.target as HTMLInputElement).checked;
+    this.onChange(checked);
+    this.onTouched();
+    this.checkedChange.emit(checked);
+  }
+
+  registerOnChange(fn: OnChangeFn): void {
+    this.onChange = fn;
+  }
+
+  registerOnTouched(fn: OnTouchedFn): void {
+    this.onTouched = fn;
+  }
+
+  setDisabledState(isDisabled: boolean): void {
+    this.disabled = isDisabled;
+  }
+
+  writeValue(checked: boolean): void {
+    this.checked = checked;
+    this.checkedChange.emit(checked);
+  }
+}
+
+type OnChangeFn = (value: boolean) => void;
+type OnTouchedFn = () => void;
+```
+
+Angular calls `registerOnChange` and `registerOnTouched` with a callback function that allows the component to notify Angular when the component is changed or touched respectively. When the user interacts with your component it should call `onTouched`. Similarly, when your component's value changes you should call `onChange` and pass the new value. When the bound form's value changes, Angular invokes `writeValue` which allows the component to update its internal state accordingly. Finally, `setDisabledState` is called by Angular when the FormControl is disabled and gives the developer a place where they can optionally disable the custom FormControl.
+
+## Verification
+
+You can now use the custom FormControl in your application's reactive forms, let's test it out!
+
+Declare a `FormGroup` in one of your components.
+
+```typescript
+formGroup = new FormGroup({
+  saveForNextTime: new FormControl(false)
+});
+```
+
+Create an instance of `<ngx-toggle>` in your template and inside of a `<form>` element and provide a value for `formControlName`.
+
+```html
+<form [formGroup]="formGroup">
+  <label for="save-for-next-time">
+    Save this information for next time?
+  </label>
+  <ngx-toggle id="save-for-next-time" formControlName="saveForNextTime">
+  </ngx-toggle>
+</form>
+```
+
+## Forms Ninja
+
+That's it — you've successfully created your own custom Angular FormControl! You have gone one step closer to mastery and can now use almost any component in a form. Well done!
+
+**Want to Connect?** If you found the information in this tutorial useful please subscribe on [Medium](https://bobbyg603.medium.com/), follow me on [X](https://x.com/bobbyg603), and/or subscribe to my [YouTube](https://www.youtube.com/c/bobbyg603) channel.

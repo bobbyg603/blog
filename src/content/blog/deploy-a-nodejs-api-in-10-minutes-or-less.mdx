@@ -1,0 +1,64 @@
+---
+title: "Deploy a Node.js API in 10 Minutes or Less"
+description: "Create a CI/CD pipeline that will deploy a microservice using the DigitalOcean App Platform, Node.js, Express, TypeScript, and Docker."
+pubDate: 2022-10-25
+author: "Bobby Galli"
+categories: ["Web Development"]
+tags: ["nodejs", "web-development", "programming", "javascript", "typescript", "docker", "digitalocean"]
+---
+
+*"Time is free, but it's priceless. You can't own it, but you can use it. You can't keep it, but you can spend it. Once you've lost it, you can never get it back."* — Harvey MacKay
+
+## Prepare to Set Sail
+
+Solo developers and small teams can't afford to spend days daydreaming about infrastructure best practices and deployment pipelines. Fruitless [woolgathering](https://www.merriam-webster.com/dictionary/woolgathering) wastes time and prevents the businesses from shipping valuable features and selling software. Unless your business has the resources to afford an army of DevOps engineers, you need a platform that allows you to go production quickly and deploy updates frequently.
+
+In this tutorial we're going to create a [CI/CD pipeline](https://www.redhat.com/en/topics/devops/what-cicd-pipeline) that will deploy a [microservice](https://en.wikipedia.org/wiki/Microservices) using the [DigitalOcean App Platform](https://www.digitalocean.com/products/app-platform), [Node.js](https://nodejs.org/en/), [Express](https://expressjs.com/), [TypeScript](https://www.typescriptlang.org/), and [Docker](https://www.docker.com/). If you haven't signed up with DigitalOcean, you can use this [link](https://m.do.co/c/dc728031e191) to score some free compute. When prompted to sign in or create an account, choose the GitHub option for easier deployments.
+
+## Raise the Mast
+
+To start the tutorial we'll need a service built with Node.js and Docker hosted in a repo on GitHub. You can use your own service, or create a new repo in your GitHub account using the template repo provided [here](https://github.com/bobbyg603/node-typescript-express-docker-starter).
+
+Once you have a working Node.js service in a GitHub repo it's time to configure the DigitalOcean App Platform! The App Platform "allows developers to publish code directly to DigitalOcean servers without worrying about the underlying infrastructure".
+
+To deploy a new app, login to DigitalOcean, click the **Apps** tab on the left side of the Dashboard, and click the **Create App** button.
+
+Assuming you've signed in with your GitHub account, choose the **Github** option under the **Service Provider** section. Next, under the **Repository** section select the name of your repo. If your repo doesn't show in the list, click the **Edit Your GitHub Permissions** link and give DigitalOcean access to your repo.
+
+Once you've selected your repo, ensure the **Auto Deploy** field is checked and click **Next**.
+
+You'll be asked to specify the resources your API will use. If you're using the provided template repo, remove the extra service that was suggested by DigitalOcean due to the development Dockerfile. Click the **Edit Plan** button and select **Basic** for now. You can safely click **Next** until the end.
+
+> ⚠️ **If you don't have any credits you will get billed for this server.**
+
+After a few minutes your API will be deployed and will be accessible from anywhere in the world! To verify your API is up and running, click the **Live App** button.
+
+You've successfully deployed your API to the cloud! DigitalOcean will also automatically deploy your application when you push to the `main` branch of your GitHub repo.
+
+## Explore the Ocean
+
+Let's use [Postman](https://www.postman.com/) to interact with the API. Postman is a tool to help you prototype API requests. A sample collection has been created for the template repo and can be forked to your account via the link below.
+
+[Collection Web View | Postman](https://app.getpostman.com/run-collection/591801-d40f15ef-00ba-46ca-b51a-86b7f5f629c3?action=collection%2Ffork&collection-url=entityId%3D591801-d40f15ef-00ba-46ca-b51a-86b7f5f629c3%26entityType%3Dcollection%26workspaceId%3D5b17848c-5889-43d3-ae5c-0ae918c08357)
+
+Once you've forked the Postman collection, click the collection folder, select the **Variables** tab, and update `base_url` with the URL you navigated to in the browser by clicking the **Live App** button.
+
+We can now upload a file to the API! In Postman, click the **POST Files** request in the **Deploy Node API in 10 Minutes or Less** collection. Select the **Body** tab, and check the **form-data** radio button. Under the **KEY** column enter `file` and hover over the right side of the column and select **File** in the dropdown menu. Under the **VALUE** column click the **Select Files** button and choose any file on your system that's under 20 MB. Finally, click **Send**.
+
+If everything worked correctly, you should be able perform a GET request to the `/files` endpoint and see your file in the list of uploaded files. You can also open your app's console in DigitalOcean which gives you a shell you can use to run various terminal commands such as [ls](https://www.freecodecamp.org/news/the-linux-ls-command-how-to-list-files-in-a-directory-with-options/#the-linux-ls-command).
+
+Awesome! You've officially deployed a microservice to the cloud using DigitalOcean's App Platform. Combine this API with a [database](https://docs.digitalocean.com/products/app-platform/how-to/manage-databases/), a [worker](https://docs.digitalocean.com/products/app-platform/how-to/manage-workers/), and a [front-end](https://docs.digitalocean.com/products/app-platform/how-to/manage-static-sites/) and you're well on your way to building the world's next [unicorn](https://en.wikipedia.org/wiki/Unicorn_(finance))!
+
+## Additional Learning
+
+A robust CI/CD pipeline requires a contributors to review all proposed code changes. In GitHub, these types of pre-merge requirements are called [Branch Protection Rules](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/defining-the-mergeability-of-pull-requests/about-protected-branches).
+
+Check out [GitHub Status Checks and Branch Protection Made Easy](https://betterprogramming.pub/github-status-checks-and-branch-protection-made-easy-b70d6d9ffc76) to learn how to configure branch protection as part of your CI/CD pipeline.
+
+Additionally, a CI/CD pipeline should require some amount of testing to be run and pass before changes can be merged. In general, applications that contain [Unit Tests](https://en.wikipedia.org/wiki/Unit_testing) are better architected, contain less bugs, and are easier to change as they increase in complexity.
+
+To learn how to get started writing unit tests please read [Getting Started With Unit Testing Software in 2022](https://betterprogramming.pub/unit-testing-software-in-2022-b3ac00962c65).
+
+Thanks for reading!
+
+**Want to Connect?** If you found the information in this tutorial useful please subscribe on [Medium](https://bobbyg603.medium.com/), follow me on [X](https://x.com/bobbyg603), and/or subscribe to my [YouTube](https://www.youtube.com/c/bobbyg603) channel.

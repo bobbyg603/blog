@@ -1,0 +1,63 @@
+---
+title: "GitHub Status Checks and Branch Protection Made Easy"
+description: "Use branch protection rules to ensure quality contributions to your repos"
+pubDate: 2022-02-20
+author: "Bobby Galli"
+categories: ["Software Development"]
+tags: ["github", "continuous-integration", "open-source", "programming", "software-engineering"]
+---
+
+GitHub provides a suite of options, allowing you to determine specific criteria to be met before a pull request can be merged into your repository. This article will outline how to configure a [branch protection rule](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/defining-the-mergeability-of-pull-requests/managing-a-branch-protection-rule) that requires pull requests to be reviewed and a [status check](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/collaborating-on-repositories-with-code-quality-features/about-status-checks) to ensure tests are run in various environments. In less time than it takes to drink a cup of coffee, you can dramatically reduce the risk of rogue merges wreaking havoc on your code.
+
+## Protect Your Branch
+
+The first step to guarding the kingdom is to add a [branch protection rule](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/defining-the-mergeability-of-pull-requests/managing-a-branch-protection-rule). Adding a branch protection rule allows you to specify a list of criteria that must be met to merge a change into a protected branch. Specifying a list of criteria that must be met before a merge allows you to formalize and automate repetitive tasks that are necessary to ensure quality contributions to your repo. Branch protections are free for public repos but require a Pro subscription to be added to private repos.
+
+Add your first rule by clicking the Settings tab on your repos' GitHub page and navigating to the Branches section. Take note of your Default Branch (usually `main`) and click Add Rule.
+
+Enter `main` into the **Branch name pattern** input and hit **Enter** or click **Save Changes**.
+
+Congrats! You have just defined `main` as a protected branch. In the next step, you will begin to define the criteria that must be met for changes to be merged into your protected branch.
+
+## Require Reviews
+
+When a review is required, someone with push access to your repo must give an open pull request their blessing before the pull request can be merged into a protected branch. Requiring a pull request review is a great way to reduce the number of bugs introduced, as it ensures someone with experience working in your repo has inspected the change and asked questions where appropriate.
+
+To require pull requests be reviewed, click the checkbox next to **Require a pull request before merging**. Be sure to also click the checkbox next to "Require approvals".
+
+Awesome! When a pull request is opened, the **Merge** button will be disabled until at least one contributor has reviewed and approved the changes. In the final step, we will add a [status check](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/collaborating-on-repositories-with-code-quality-features/about-status-checks) to ensure a specific action has been run successfully.
+
+## Run Tests
+
+Running all the tests in your repository for any change contributors propose is important. Running tests for each pull request reduces the likelihood of regressions and other bugs being introduced to your code and ensures a higher quality in the code merged to the protected branch. If you're interested in learning more about testing, check out this [article](/blog/getting-started-with-unit-testing-software-in-2022) for a crash course on the basics of unit testing.
+
+To configure a status check that leverages GitHub Actions to run your tests, create a `.github/workflows/ci.yml` file. The following snippet contains a workflow that will run tests for a Node.js app:
+
+```yaml
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm test
+```
+
+If you're not developing with Node.js you'll have to modify `ci.yml` to work with your platform. Here are some links that outline how to run tests with GitHub Actions on other platforms: [.NET](https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-net), [Python](https://docs.github.com/actions/automating-builds-and-tests/building-and-testing-nodejs-or-python?langId=py), [Ruby](https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-ruby), [Swift](https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-swift), and [Java](https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-java-with-gradle).
+
+To require a clean test run before a pull request can be merged, navigate back to your repo's **Settings** page. Click the checkbox next to **Require status checks to pass before merging**. Search for `ci` in the **Search for status checks in the last week for this repository** input field and click the search result to enable the status check.
+
+Nice! If you open a pull request, you should notice that the merge button won't turn green until the status checks are complete and the pull request has been reviewed.
+
+**Want to Connect?** If you found the information in this tutorial useful, please follow me on [X](https://x.com/bobbyg603).

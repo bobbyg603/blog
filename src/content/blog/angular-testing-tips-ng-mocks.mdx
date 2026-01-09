@@ -1,0 +1,342 @@
+---
+title: "Angular Testing Tips: Ng-Mocks"
+description: "Write Better Tests Faster With Ng-Mocks and Jasmine-Auto-Spies"
+pubDate: 2023-03-19
+author: "Bobby Galli"
+categories: ["Web Development"]
+tags: ["angular", "testing", "typescript", "ng-mocks"]
+---
+
+## Clean Your Room
+
+Writing unit tests is a lot like cleaning your room; it can be tedious and time-consuming, but ultimately leads to a cleaner and more organized space. Similarly, unit testing can be challenging and require a significant investment of time and effort, but it ultimately leads to more reliable and better-organized code that meets the needs of users and stakeholders. Cleaning your room and writing tests both seem overwhelming at first, but breaking each task down into smaller, more manageable tasks can make it easier to tackle. Just as a clean room can help you feel more productive and focused, reliable and well-tested code can help you work more efficiently and with greater confidence.
+
+A reference project that demonstrates some simple [ng-mocks](https://github.com/help-me-mom/ng-mocks) examples is available on [GitHub](https://github.com/bobbyg603/ng-testing-tips-ng-mocks).
+
+## Mocks
+
+According to the [CircleCI blog](https://circleci.com/blog/how-to-test-software-part-i-mocking-stubbing-and-contract-testing/), "mocking means creating a fake version of an external or internal service that can stand in for the real one, helping your tests run more quickly and more reliably. When your implementation interacts with an object's properties, rather than its function or behavior, a mock can be used".
+
+To write tests that are fast and reliable, it's important to narrow the scope of the [system under test](https://www.tutorialspoint.com/software_testing_dictionary/system_under_test.htm). The best way to narrow the scope of the component being tested is to mock all of the component's dependencies. Replacing child components with empty fakes prevents us from testing beyond the boundaries of our parent component. By mocking component dependencies, we can replace child components with empty templates that render faster, allowing us to iterate quickly and shorten the testing feedback loop.
+
+In both component and service tests, mocking allows us to manufacture different scenarios and test code that would be difficult to test under normal circumstances. For instance, testing error handling code requires generating an error response from an external server. By replacing an external server with a mock implementation we can easily generate an error response and test the corresponding error-handling logic.
+
+## Getting Started
+
+The Angular documentation provides a bit of guidance on how to create mocks in unit tests. According to the [Angular docs](https://angular.io/guide/testing-components-basics#component-class-testing), you can provide a mock service implementation by following one of their examples:
+
+```typescript
+class MockUserService {
+  isLoggedIn = true;
+  user = { name: 'Test User'};
+}
+
+beforeEach(() => {
+  TestBed.configureTestingModule({
+    // provide the component-under-test and dependent service
+    providers: [
+      WelcomeComponent,
+      { provide: UserService, useClass: MockUserService }
+    ]
+  });
+  // inject both the component and the dependent service.
+  comp = TestBed.inject(WelcomeComponent);
+  userService = TestBed.inject(UserService);
+});
+```
+
+Similarly, the [Angular docs](https://angular.io/guide/testing-components-scenarios#stubbing-unneeded-components) demonstrate how to declare implementations for mocked components:
+
+```typescript
+@Component({selector: 'app-banner', template: ''})
+class BannerStubComponent { }
+
+@Component({selector: 'router-outlet', template: ''})
+class RouterOutletStubComponent { }
+
+@Component({selector: 'app-welcome', template: ''})
+class WelcomeStubComponent { }
+
+TestBed
+  .configureTestingModule({
+    imports: [RouterLink],
+    providers: [provideRouter([])],
+    declarations:
+        [AppComponent, BannerStubComponent, RouterOutletStubComponent, WelcomeStubComponent]
+  })
+```
+
+The mock implementations from the Angular docs work, but require a lot of boilerplate code each time you define a new mock. Fortunately, [ng-mocks](https://github.com/help-me-mom/ng-mocks) provides several tools that make it easier to create fake implementations.
+
+## Ng-Mocks
+
+According to the [docs](https://ng-mocks.sudo.eu/), "ng-mocks is a testing library that helps with mocking [services](https://ng-mocks.sudo.eu/api/MockService), [components](https://ng-mocks.sudo.eu/api/MockComponent), [directives](https://ng-mocks.sudo.eu/api/MockDirective), [pipes](https://ng-mocks.sudo.eu/api/MockPipe), and [modules](https://ng-mocks.sudo.eu/api/MockModule) in tests for Angular applications. When we have a noisy child component, or any other annoying dependency, ng-mocks has tools to turn these declarations into their mocks, keeping interfaces as they are, but suppressing their implementation."
+
+### MockComponent
+
+The easiest way to start with ng-mocks is to replace child components with their MockComponent equivalents. Let's have a look at a snippet from an example Angular component.
+
+```html
+<div class="main-content">
+  <div class="form">
+    <div class="breeds">
+      <app-form [breeds]="(breeds$ | async)!" [breed]="breed" [count]="count"
+        (formChange)="onFormChange($event)"></app-form>
+    </div>
+  </div>
+  <div class="cards">
+    <mat-spinner *ngIf="loading$ | async"></mat-spinner>
+    <app-card *ngFor="let dog of dogs$ | async" [imgSrc]="dog"></app-card>
+  </div>
+</div>
+```
+
+Notice we have 3 child component dependencies app-form, mat-spinner, and app-card. If we were to define mocks manually, they would look like this.
+
+```typescript
+@Component({selector: 'app-form', template: ''})
+class MockAppFormComponent {
+  @Input breeds: Array<any>;
+  @Input breed: any;
+  @Input count: any;
+  @Output formChange = new EventEmitter<any>();
+}
+
+@Component({selector: 'mat-spinner', template: ''})
+class MockMatProgressSpinnerComponent { }
+
+@Component({selector: 'app-card', template: ''})
+class MockAppCardComponent {
+  @Input imgSrc: any;
+}
+
+describe('AppComponent', () => {
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      declarations: [
+        AppComponent,
+        MockAppFormComponent,
+        MockMatProgressSpinnerComponent,
+        MockAppCardComponent
+      ]
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(AppComponent);
+    app = fixture.componentInstance;
+  });
+});
+```
+
+We have to define all of the same inputs as the real component otherwise we'll see several errors like `Can't bind to 'count' since it isn't a known property of 'app-form'`. Each time we add a new input to our real component, we also have to remember to add an input to our mock. Manually syncing inputs between our real and mocked components is a small pain that causes big productivity losses over time.
+
+With ng-mocks, we can simplify the snippet above, reducing code, and automatically keeping our mocks in sync with our real components.
+
+```typescript
+describe('AppComponent', () => {
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      declarations: [
+        AppComponent,
+        MockComponent(MatProgressSpinnerComponent),
+        MockComponent(FormComponent),
+        MockComponent(CardComponent),
+      ]
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(AppComponent);
+    app = fixture.componentInstance;
+  });
+});
+```
+
+Using MockComponent we've completely removed the need to manage component mock inputs!
+
+### MockProvider
+
+Mocking services allows developers to short-circuit deep, complex dependency trees and write simpler tests. When a component depends on a service that depends on Angular's [HttpClient](https://angular.io/api/common/http/HttpClient), you can mock the service and forgo the import of [HttpClientTestingModule](https://angular.io/api/common/http/testing/HttpClientTestingModule).
+
+Typically when we create mock services it will look something like this.
+
+```typescript
+let dogService: jasmine.SpyObj<DogService>;
+
+describe('AppComponent', () => {
+  const breeds = ['affenpinscher', 'african', 'airedale'];
+  const dogs = ['https://images.dog.ceo/breeds/affenpinscher/n02110627_10047.jpg'];
+  dogService = jasmine.createSpyObj('DogService', ['getBreeds', 'getDogs'];
+  dogService.getBreeds.and.returnValue(of(breeds));
+  dogService.getDogs.and.returnValue(of(dogs));
+
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      providers: [
+        {
+          provide: DogService,
+          useValue: dogService
+        }
+      ]
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(AppComponent);
+    app = fixture.componentInstance;
+  });
+});
+```
+
+We can simplify the TestBed configuration in the example above using [MockProvider](https://ng-mocks.sudo.eu/api/MockProvider).
+
+```typescript
+await TestBed.configureTestingModule({
+  providers: [
+    MockProvider(DogService, dogService)
+  ]
+}).compileComponents();
+```
+
+There's another trick we can employ — we can use [jasmine-auto-spies](https://www.npmjs.com/package/jasmine-auto-spies) to save a few keystrokes. Here's a version of DogService created by jasmine-auto-spies.
+
+```typescript
+import { createSpyFromClass, Spy } from 'jasmine-auto-spies';
+
+let dogService: Spy<DogService>;
+
+dogService = createSpyFromClass(DogService);
+dogService.getBreeds.and.returnValue(of(breeds));
+dogService.getDogs.and.returnValue(of(dogs));
+```
+
+MockProvider is cleaner and shorter than it's provide/useValue counterpart, and createSpyFromClass allows us to create spied objects without needing to type out the names of each method.
+
+### MockBuilder
+
+We can continue to improve our code cleanliness with [MockBuilder](https://ng-mocks.sudo.eu/api/MockBuilder). MockBuilder leverages the [builder pattern](https://refactoring.guru/design-patterns/builder) and [fluent syntax](https://www.martinfowler.com/bliki/FluentInterface.html) to chain function calls and succinctly construct an ng-mocks equivalent to TestBed. Take a look at the following example that sets up AppComponent in our companion repo via configureTestingModule.
+
+```typescript
+describe('AppComponent', () => {
+  breeds = ['affenpinscher', 'african', 'airedale'];
+  dogs = ['https://images.dog.ceo/breeds/affenpinscher/n02110627_10047.jpg'];
+  dogService = createSpyFromClass(DogService);
+  dogService.getBreeds.and.returnValue(of(breeds));
+  dogService.getDogs.and.returnValue(of(dogs));
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [
+        MockModule(FontAwesomeModule),
+        MockModule(MatProgressSpinnerModule),
+        MockModule(MatToolbarModule)
+      ],
+      declarations: [
+        AppComponent,
+        MockComponent(FormComponent),
+        MockComponent(CardComponent)
+      ],
+      providers: [
+        MockProvider(DogService, dogService)
+      ]
+    }).compileComponents();
+  });
+});
+```
+
+Using MockBuilder we can reduce our setup by several lines of code.
+
+```typescript
+describe('AppComponent', () => {
+  beforeEach(async () => {
+    breeds = ['affenpinscher', 'african', 'airedale'];
+    dogs = ['https://images.dog.ceo/breeds/affenpinscher/n02110627_10047.jpg'];
+    dogService = createSpyFromClass(DogService);
+    dogService.getBreeds.and.returnValue(of(breeds));
+    dogService.getDogs.and.returnValue(of(dogs));
+    await MockBuilder(AppComponent, AppModule)
+      .mock(FontAwesomeModule)
+      .mock(MatProgressSpinnerModule)
+      .mock(MatToolbarModule)
+      .mock(CardComponent)
+      .mock(DialogComponent)
+      .mock(FormComponent)
+      .provide({ provide: DogService, useValue: dogService });
+  });
+});
+```
+
+We chain calls to [mock](https://ng-mocks.sudo.eu/api/MockBuilder#mock) to replace our real modules and components with mocked equivalents. The [provide](https://ng-mocks.sudo.eu/api/MockBuilder#provide) function is also chain-able and lets us inject our mocked version of DogService.
+
+### MockRender
+
+Ng-mocks provides [MockRender](https://ng-mocks.sudo.eu/api/MockRender) to help test Inputs, Outputs, ChildContent, and render custom templates. Additionally, MockRender provides the [find](https://ng-mocks.sudo.eu/api/ngMocks/find) and [findAll](https://ng-mocks.sudo.eu/api/ngMocks/findAll) convenience methods that return appropriately-typed references to child components.
+
+The MockComponent and MockProvider functions are used in tandem with Angular's TestBed. MockRender is typically used in lieu of TestBed and is most useful for testing [directives](https://ng-mocks.sudo.eu/guides/directive-attribute).
+
+A better solution for testing various directive cases is to define a fake component per test. However, the Angular component decorator is verbose, and thus a "one component, one test case" approach would require a lot of extra code.
+
+Fortunately, ng-mocks allows developers to use MockRender to render small, one-off templates in their tests. Here's a snippet from the ng-mocks docs that demonstrates test cases for a highlight directive.
+
+```typescript
+it('uses default background color', () => {
+    const fixture = MockRender('<div target></div>');
+
+    expect(fixture.nativeElement.innerHTML).not.toContain(
+      'style="background-color: yellow;"',
+    );
+});
+
+it('sets provided background color', () => {
+    const fixture = MockRender('<div [color]="color" target></div>', {
+      color: 'red',
+    });
+
+    fixture.point.triggerEventHandler('mouseenter', null);
+    expect(fixture.nativeElement.innerHTML).toContain(
+      'style="background-color: red;"',
+    );
+});
+```
+
+Using MockRender allows developers to build small, isolated sandboxes that are incredibly useful for testing directives.
+
+## Putting It All Together
+
+Here's a look at the AppComponent template from the [companion repo](https://github.com/bobbyg603/ng-testing-tips-ng-mocks).
+
+```html
+<mat-toolbar color="primary">
+  <span class="title">
+    <fa-icon [icon]="faAngular" size="xl"></fa-icon>
+    {{ title }}
+  </span>
+  <span class="spacer"></span>
+  <a mat-icon-button href="https://github.com/bobbyg603/ng-testing-tips-ng-mocks" target="_blank" rel="noopener noreferrer"
+    aria-label="ngx-testing-tips on GitHub">
+    <fa-icon [icon]="faGithub"></fa-icon>
+  </a>
+</mat-toolbar>
+<div class="main-content">
+  <div class="form">
+    <div class="breeds">
+      <app-form [breeds]="(breeds$ | async)!" [breed]="breed" [count]="count"
+        (formChange)="onFormChange($event)"></app-form>
+    </div>
+  </div>
+  <div class="cards">
+    <mat-spinner *ngIf="loading$ | async"></mat-spinner>
+    <app-card *ngFor="let dog of dogs$ | async" [imgSrc]="dog"></app-card>
+  </div>
+</div>
+```
+
+What's important to test in the component above? A good way to answer the question of what to test is "what does the component need to do in order to function properly". Another good question to ask is "how can we document what this component does so it can be understood by the next person who works on it".
+
+It seems like a good idea to ensure that the title shows up. We also have an input form that needs to be initialized with the correct defaults for breeds, breed, and count. When the input form changes, we should handle the change event and update our count. If the form changes, we need to ensure that we call our dogsService with updated breed and count values.
+
+By breaking our task down into smaller pieces, and leveraging ng-mocks, writing our tests is easier than it looks.
+
+Take a moment to read over the test suite, you'll notice most of the tests are straightforward and easy to write (especially with [CoPilot](https://github.com/features/copilot)). In beforeEach, we passed `{ detectChanges: false }` to MockRender so that it more closely mimics the way TestBed works and allows us to perform assertions against the component's class without any change detection or rendering.
+
+The RxJS [firstValueFrom](https://rxjs.dev/api/index/function/firstValueFrom) function helps us to convert observables to promises, and [expectAsync](https://jasmine.github.io/api/4.6/global.html#expectAsync) allows us to create tests with a single expression. We can also use firstValueFrom with [skip](https://rxjs.dev/api/operators/skip) to test subsequent emissions in loading$ for instance.
+
+Our template tests use ngMocks.detectChanges to render our component under test. We use [find](https://ng-mocks.sudo.eu/api/ngMocks/find) and [findAll](https://ng-mocks.sudo.eu/api/ngMocks/findAll) to get references to various component [DebugElements](https://angular.io/guide/testing-components-basics#debugelement). By using [map](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Map) we can convert collections of DebugElements into collections of NativeElements, query the DOM with [querySelector](https://developer.mozilla.org/en-US/docs/Web/API/Document/querySelector), and perform various expectations.
+
+Thanks for reading!
+
+**Want to Connect?** If you found the information in this tutorial useful please subscribe on Medium, follow me on [X](https://x.com/bobbyg603), and/or subscribe to my YouTube channel.

@@ -1,0 +1,72 @@
+---
+title: "How to Install Node via Ubuntu Terminal"
+description: "Install nvm and start using Node.js on Ubuntu"
+pubDate: 2022-12-22
+author: "Bobby Galli"
+categories: ["Web Development"]
+tags: ["nodejs", "ubuntu", "terminal", "web-development", "linux"]
+---
+
+## Introduction
+
+This article provides the commands needed to install [Node.js](https://nodejs.org/) on [Ubuntu](https://ubuntu.com/) via [nvm](https://github.com/nvm-sh/nvm). Nvm (aka Node Version Manager) is a handy tool that makes it easy to download and switch between versions of Node.js.
+
+## Steps
+
+Make sure your system is up to date.
+
+```bash
+sudo apt update && sudo apt upgrade
+```
+
+Install [curl](https://curl.se/) via `apt install`. Note it's important to install curl via `apt` instead of `snap`. For more info see this [Stack Overflow post](https://stackoverflow.com/questions/67541374/nvm-getting-permission-denied-with-nvm-install-command).
+
+```bash
+sudo apt install curl
+```
+
+Download and run the [install script](https://github.com/nvm-sh/nvm/blob/master/install.sh) for `nvm`.
+
+```bash
+wget https://raw.githubusercontent.com/nvm-sh/nvm/master/install.sh
+bash install.sh
+```
+
+Verify that `nvm` was installed properly
+
+```bash
+nvm -v
+# 0.39.2
+```
+
+Finally, install node via `nvm install`.
+
+```bash
+nvm install --lts
+```
+
+## Bonus
+
+If your project depends on a specific version of node, create [.nvmrc](https://github.com/nvm-sh/nvm#nvmrc) file in the project's root.
+
+```bash
+echo "18" > .nvmrc # default to version 18
+```
+
+You can switch to the version specified by a project with `nvm use`.
+
+```bash
+nvm use
+# Found '/home/bobby/Desktop/github/node-dump-syms/.nvmrc' with version <18>
+# Now using node v18.12.1 (npm v8.19.2)
+```
+
+Thanks for reading!
+
+**Want to Connect?** If you found the information in this tutorial useful please subscribe on [Medium](https://bobbyg603.medium.com/), follow me on [X](https://x.com/bobbyg603), and/or subscribe to my [YouTube](https://youtube.com/c/bobbyg603) channel.
+
+## References
+
+- [https://techviewleo.com/how-to-install-node-js-18-lts-on-ubuntu/](https://techviewleo.com/how-to-install-node-js-18-lts-on-ubuntu/)
+- [https://stackoverflow.com/questions/67541374/nvm-getting-permission-denied-with-nvm-install-command](https://stackoverflow.com/questions/67541374/nvm-getting-permission-denied-with-nvm-install-command)
+- [https://stackoverflow.com/questions/64002438/installing-node-lts-with-nvm-on-windows](https://stackoverflow.com/questions/64002438/installing-node-lts-with-nvm-on-windows)

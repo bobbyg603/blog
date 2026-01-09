@@ -1,0 +1,67 @@
+---
+title: "How to Set the Background Color in SwiftUI"
+description: "Using ZStack to Set the Background Color of a View in SwiftUI"
+pubDate: 2022-12-06
+author: "Bobby Galli"
+categories: ["iOS Development"]
+tags: ["swift", "swiftui", "development", "mac", "ios"]
+---
+
+Using a [ZStack](https://developer.apple.com/documentation/swiftui/zstack) to set the background color is a common pattern in [SwiftUI](https://developer.apple.com/xcode/swiftui/). `ZStack` allows you to layer views on top of each other, with the first view in the stack being at the bottom and the last view at the top.
+
+Here is an example of how you can use a `ZStack` to set the background color of a view:
+
+```swift
+struct MyView: View {
+    var body: some View {
+        ZStack {
+            Color.blue // Background color
+            Text("Hello, world!") // Foreground content
+        }
+    }
+}
+```
+
+The snippet above will create a text view on a blue background. Because SwiftUI treats colors as [View](https://developer.apple.com/documentation/swiftui/view) instances, you can also directly add them to a view hierarchy. `Color.blue` is the first element in the `ZStack`, so it will be at the bottom and act as the background color for the text view. The `Text` view is the second element in the stack, so it will be on top of the blue background.
+
+You can also use the `ZStack` approach to set the background color of a parent view and all of its child views. For example:
+
+```swift
+struct MyView: View {
+    var body: some View {
+        ZStack {
+            Color.blue // Background color
+            VStack {
+                Text("Hello, world!")
+                Text("Goodnight, world!")
+            } // Foreground content
+        }
+    }
+}
+```
+
+This will create a text view on a blue background. The `Color.blue` view is the first element in the `ZStack`, so it will be at the bottom and act as the background color for the text view. The text view is the second element in the stack, so it will be on top of the blue background.
+
+You can also use the `ZStack` approach to set the background color of a parent view and all of its child views. For example:
+
+```swift
+import SwiftUI
+
+@main
+struct MyApp: App {
+    var body: some Scene {
+        WindowGroup {
+            ZStack {
+                Color.blue // Background color
+                HomeView() // Foreground content
+            }
+        }
+    }
+}
+```
+
+This will set the background color of the app to blue, and all of the views in your app will be on a blue background. Please note that the above example didn't render correctly in the editor preview pane, but when the app was loaded the background was successfully rendered blue.
+
+Overall, using a `ZStack` is a flexible and convenient way to set the background color of a view or an entire app in SwiftUI.
+
+**Want to Connect?** If you found the information in this tutorial useful please subscribe on [Medium](https://bobbyg603.medium.com/), follow me on [X](https://x.com/bobbyg603), and/or subscribe to my [YouTube](https://youtube.com/bobbyg603) channel.

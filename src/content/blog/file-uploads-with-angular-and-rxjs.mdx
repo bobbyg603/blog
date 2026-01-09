@@ -1,0 +1,503 @@
+---
+title: "File Uploads With Angular and RxJS"
+description: "Add a powerful, elegant file upload control to your Angular application"
+pubDate: 2022-05-06
+author: "Bobby Galli"
+categories: ["Web Development"]
+tags: ["angular", "typescript", "rxjs", "javascript", "bootstrap", "file-upload"]
+---
+
+## File Uploads
+
+Data transfer is a ubiquitous part of software applications. The File Upload control permeates the technology ecosystem from Apple to Zoom and is a component that many interact with daily. This tutorial demonstrates how to build a file upload client with RxJS, Angular, and Bootstrap.
+
+Most Angular file upload tutorials subscribe to observables and manage subscriptions explicitly. In this article we will explore using, `bindCallback`, `scan`, `mergeMap`, `takeWhile`, and the `AsyncPipe` to create a fully-reactive upload control complete with progress bars and subscriptions that take care of themselves.
+
+A companion repo for this article can be found [here](https://github.com/bobbyg603/uploads-client).
+
+## Server
+
+In order to develop our Angular file upload component we'll need a backend that capable of handling file uploads, downloads, and returning a list of files that have been uploaded.
+
+To get started, please clone the server repo:
+
+```bash
+git clone https://github.com/bobbyg603/upload-server.git
+```
+
+Install the package's dependencies and start the server so that we have something we can use to develop our file upload component:
+
+```bash
+npm i && npm start
+```
+
+This is a REAL server and should not be left running when not in use!
+
+## Client
+
+To begin, let's create a new Angular application using the Angular CLI being sure to choose scss as your stylesheet format:
+
+```bash
+ng new uploads-client && cd uploads-client
+```
+
+We can leverage a few third-party libraries to greatly simplify the creation of a real-world file upload component. Let's install Bootstrap, ng-bootstrap and ngx-file-drop. We'll also install Bootstrap's dependency @popperjs/core:
+
+```bash
+npm i bootstrap @popperjs/core @ng-bootstrap/ng-bootstrap @bugsplat/ngx-file-drop --legacy-peer-deps
+```
+
+Add the @angular/localize polyfill for Bootstrap by running the following terminal command:
+
+```bash
+ng add @angular/localize
+```
+
+Finally, import Bootstrap's scss into your styles.scss file:
+
+```scss
+@import "~bootstrap/scss/bootstrap";
+```
+
+### Files Table
+
+The easiest place to start is to get the list of files from the server and display them in a table. Create a new files component to display our list of files:
+
+```bash
+ng g c files
+```
+
+Add a new instance of FilesComponent to your app.component.html template:
+
+```html
+<app-files [files]="files$ | async"></app-files>
+```
+
+Let's add an interface that represents the data we will want to display. Create a new file `files/files-table-entry.ts`:
+
+```typescript
+export interface FilesTableEntry {
+  name: string;
+  size: number;
+  lastModified: Date;
+}
+```
+
+In files.component.html, add a table that displays a collection of files:
+
+```html
+<table class="table table-striped">
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Size</th>
+      <th>Last Modified</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr *ngFor="let file of files">
+      <td>{{ file.name }}</td>
+      <td>{{ file.size }}</td>
+      <td>{{ file.lastModified | date }}</td>
+    </tr>
+  </tbody>
+</table>
+```
+
+To make the UI more interesting, let's provide some placeholder data in files.component.ts:
+
+```typescript
+import { Component, Input } from '@angular/core';
+import { FilesTableEntry } from './files-table-entry';
+
+@Component({
+  selector: 'app-files',
+  templateUrl: './files.component.html'
+})
+export class FilesComponent {
+  @Input() files: FilesTableEntry[] = [];
+}
+```
+
+### List Uploaded Files
+
+So far we've built a table for displaying files and populated it with some dummy data. Let's display the real list of files by making a GET request to the /files endpoint on our server.
+
+Add HttpClientModule to the imports array in app.module.ts:
+
+```typescript
+import { HttpClientModule } from '@angular/common/http';
+
+@NgModule({
+  imports: [
+    HttpClientModule,
+    // ...
+  ]
+})
+export class AppModule { }
+```
+
+Inject HttpClient into the constructor of app.component.ts. In the constructor, set files$ to the result of a GET request to /files — be sure to start your Express server if it's not already running!
+
+```typescript
+import { HttpClient } from '@angular/common/http';
+import { Observable } from 'rxjs';
+import { FilesTableEntry } from './files/files-table-entry';
+
+@Component({
+  selector: 'app-root',
+  templateUrl: './app.component.html'
+})
+export class AppComponent {
+  files$: Observable<FilesTableEntry[]>;
+
+  constructor(private http: HttpClient) {
+    this.files$ = this.http.get<FilesTableEntry[]>('http://localhost:3000/files');
+  }
+}
+```
+
+Pass files$ as an input to FilesComponent using Angular's AsyncPipe:
+
+```html
+<app-files [files]="files$ | async"></app-files>
+```
+
+We use the AsyncPipe because it will automatically manage subscribing and unsubscribing to the files$ observable. If you find yourself calling subscribe on an observable in Angular be careful — forgetting to call unsubscribe can lead to a memory leak and degraded application performance!
+
+### File Selection
+
+Before we can upload files we need a way to allow the user to specify which files they would like to upload. To get started, create a new file-drop.component.ts component for selecting files:
+
+```bash
+ng g c file-drop
+```
+
+Our third-party NgxFileDropComponent allows our user to drag-and-drop files into our web app or specify files to upload via the system file picker. To use NgxFileDropComponent we first need to add NgxFileDropModule to our application's app.module.ts:
+
+```typescript
+import { NgxFileDropModule } from '@bugsplat/ngx-file-drop';
+
+@NgModule({
+  imports: [
+    NgxFileDropModule,
+    // ...
+  ]
+})
+export class AppModule { }
+```
+
+Add ngx-file-drop and a basic ng-template to file-drop.component.html so that we can drag and drop files into our app or choose files via the system file picker:
+
+```html
+<ngx-file-drop
+  dropZoneLabel="Drop files here"
+  (onFileDrop)="onFilesDropped($event)"
+  [showBrowseBtn]="true"
+  browseBtnLabel="Browse Files">
+</ngx-file-drop>
+```
+
+In file-drop.component.ts, create a onFilesDropped function that will serve as a handler for the onFileDrop event. Let's also create a filesDropped output that we will use to relay the event to our AppComponent:
+
+```typescript
+import { Component, EventEmitter, Output } from '@angular/core';
+import { NgxFileDropEntry } from '@bugsplat/ngx-file-drop';
+
+@Component({
+  selector: 'app-file-drop',
+  templateUrl: './file-drop.component.html'
+})
+export class FileDropComponent {
+  @Output() filesDropped = new EventEmitter<NgxFileDropEntry[]>();
+
+  onFilesDropped(files: NgxFileDropEntry[]) {
+    this.filesDropped.emit(files);
+  }
+}
+```
+
+We use an Output here so that we can communicate from the FileDropComponent to AppComponent. Separation of concerns is fundamental software design principal that encourages clean, readable, and re-usable code.
+
+Now that we've created our Output in the FileDropComponent, add a handler for filesDropped events to your app.component.html template:
+
+```html
+<app-file-drop (filesDropped)="onFilesDropped($event)"></app-file-drop>
+```
+
+Add an onFilesDropped handler to your AppComponent:
+
+```typescript
+onFilesDropped(files: NgxFileDropEntry[]) {
+  console.log(files);
+}
+```
+
+### Getting the File Object
+
+Before we can start the file upload we'll need to create an observable stream that emits each file from the NgxFileDropEntry array. Getting the File object from NgxFileDropEntry is a bit tricky because it's passed as a parameter into a callback function.
+
+Fortunately, RxJS has `bindCallback` which we can use to transform the function that takes a callback into an observable:
+
+```typescript
+import { bindCallback, from } from 'rxjs';
+import { mergeMap } from 'rxjs/operators';
+import { FileSystemFileEntry, NgxFileDropEntry } from '@bugsplat/ngx-file-drop';
+
+onFilesDropped(files: NgxFileDropEntry[]) {
+  from(files).pipe(
+    mergeMap(droppedFile => {
+      const fileEntry = droppedFile.fileEntry as FileSystemFileEntry;
+      const observableFactory = bindCallback(fileEntry.file) as any;
+      return observableFactory.call(fileEntry);
+    })
+  ).subscribe(file => console.log(file));
+}
+```
+
+There's a lot going on in the bindCallback snippet above.
+
+First, the `from` operator is used to take an array of NgxFileDropEntry items and emit them one by one allowing us to operate on each item individually.
+
+Next, the items are piped into `mergeMap`, this allows us to map each NgxFileDropEntry into a new observable without cancelling any previous inner subscriptions. Each NgxFileDropEntry will eventually map to an upload operation that emits multiple progress events over time.
+
+When you have an observable you would like to map to another observable, `switchMap` is the operator of choice in most cases because it automatically cancels inner subscriptions. In this case, however, we want to maintain the inner subscriptions so they continue streaming progress for each file that is being uploaded.
+
+Finally, we use `bindCallback` to create an observable from a function that passes the result of an async operation to a callback. Unfortunately there's a typing issue in TypeScript's es5 lib that I don't fully understand. To workaround the issue the result of bindCallback is cast to any.
+
+### File Uploads
+
+Now that we've transformed the File object from NgxFileDropEntry to an observable let's use Angular's HttpClient to upload the files and return progress events.
+
+Here's what our App component's onFilesDropped function should look like:
+
+```typescript
+import { HttpEventType } from '@angular/common/http';
+import { switchMap } from 'rxjs/operators';
+
+onFilesDropped(files: NgxFileDropEntry[]) {
+  from(files).pipe(
+    mergeMap(droppedFile => {
+      const fileEntry = droppedFile.fileEntry as FileSystemFileEntry;
+      const observableFactory = bindCallback(fileEntry.file) as any;
+      return observableFactory.call(fileEntry);
+    }),
+    mergeMap((file: File) => {
+      const formData = new FormData();
+      formData.append('file', file, file.name);
+      return this.http.post('http://localhost:3000/upload', formData, {
+        reportProgress: true,
+        observe: 'events'
+      });
+    })
+  ).subscribe(event => console.log(event));
+}
+```
+
+Notice we are now mapping file$ to the result of httpClient.post and this time, flattening the observable stream and cancelling the inner subscription with switchMap. We use `reportProgress: true` and `observe: 'events'` to indicate to HttpClient that we want it to emit progress values as files are uploaded.
+
+The events we are most interested in have type `HttpEventType.UploadProgress` or `type: 1`.
+
+### Filtering Events
+
+For now, let's create a type-guard. The type guard will both allow us to filter out events that are not progress events, and indicate to TypeScript that the type of the input to the next operator will be HttpUploadProgressEvent:
+
+```typescript
+import { HttpEvent, HttpEventType, HttpUploadProgressEvent } from '@angular/common/http';
+
+function isUploadProgressEvent(event: HttpEvent<unknown>): event is HttpUploadProgressEvent {
+  return event.type === HttpEventType.UploadProgress;
+}
+```
+
+Use the type guard with the filter operator so that other events are filtered out of the observable stream:
+
+```typescript
+import { filter } from 'rxjs/operators';
+
+// Inside the pipe:
+filter(isUploadProgressEvent)
+```
+
+Please note that there aren't many upload events because you're uploading to a server hosted on your local machine. You will see more upload events when the server is hosted across the internet.
+
+### Completing the Upload Observable Stream
+
+Before we get too far ahead of ourselves, we need to make a small change to our observable stream to ensure that it gets finalized at the correct time. Remember how mergeMap requires us to manage our inner subscriptions? The RxJS docs recommend using one of the take operators to manage the completion of inner subscriptions.
+
+When an upload operation is complete, HttpClient emits an event of type `HttpEventType.Response` or `{ type: 4 }`. Let's use the `takeWhile` operator to complete the subscription when the upload operation emits a response:
+
+```typescript
+import { takeWhile } from 'rxjs/operators';
+
+// Inside the pipe after mergeMap:
+takeWhile(event => event.type !== HttpEventType.Response, true)
+```
+
+You should now be able to upload files to your server — nice! In the final section we'll add progress bars to the file uploads.
+
+### Upload Progress Accumulator
+
+Now that we're uploading files and getting a stream of upload events we need to massage these events into a collection we can work with in the UI.
+
+The `scan` operator is similar to reduce but instead of manipulating arrays it will reduce values emitted from an observable stream into an array or object.
+
+We want to keep a running collection that maps each file to its most recent progress value. With large collections, it's much faster to index into the collection using a string value than to search the collection for the correct index.
+
+We want to give each file a unique string for an id property that we can use to quickly index into our collection of files and update their associated progress. We'll lean on the uuid package for this:
+
+```bash
+npm i uuid && npm i --save-dev @types/uuid
+```
+
+We'll import uuid to app.component.ts using an alias so that it reads a little nicer:
+
+```typescript
+import { v4 as uuid } from 'uuid';
+```
+
+We can use the loaded and total values to generate our progress value. First, we'll map each progress event to the FileUploadProgress interface. Next, we'll use the scan operator with our id we defined in the ancestor function scope to save our progress values to an accumulator. Finally, we'll convert the accumulator to an array of values so that it's easy to display in the UI:
+
+```typescript
+interface FileUploadProgress {
+  id: string;
+  name: string;
+  progress: number;
+  failed: boolean;
+}
+
+// In the observable pipe:
+mergeMap(droppedFile => {
+  const id = uuid();
+  const fileEntry = droppedFile.fileEntry as FileSystemFileEntry;
+  const observableFactory = bindCallback(fileEntry.file) as any;
+
+  return observableFactory.call(fileEntry).pipe(
+    mergeMap((file: File) => {
+      const formData = new FormData();
+      formData.append('file', file, file.name);
+      return this.http.post('http://localhost:3000/upload', formData, {
+        reportProgress: true,
+        observe: 'events'
+      }).pipe(
+        takeWhile(event => event.type !== HttpEventType.Response, true),
+        filter(isUploadProgressEvent),
+        map(event => ({
+          id,
+          name: file.name,
+          progress: Math.round(100 * event.loaded / (event.total || 1)),
+          failed: false
+        }))
+      );
+    })
+  );
+}),
+scan((acc, value) => {
+  acc[value.id] = value;
+  return acc;
+}, {} as Record<string, FileUploadProgress>),
+map(acc => Object.values(acc))
+```
+
+### Upload Progress Bars
+
+We're going to use progress bars to display the progress of each upload to the user. To get started, add NgbProgressbarModule to app.module.ts:
+
+```typescript
+import { NgbProgressbarModule } from '@ng-bootstrap/ng-bootstrap';
+
+@NgModule({
+  imports: [
+    NgbProgressbarModule,
+    // ...
+  ]
+})
+export class AppModule { }
+```
+
+Add an UploadsComponent so that we can display the upload progress bars:
+
+```bash
+ng g c uploads
+```
+
+Copy the following to uploads.component.ts:
+
+```typescript
+import { Component, Input } from '@angular/core';
+
+interface FileUploadProgress {
+  id: string;
+  name: string;
+  progress: number;
+  failed: boolean;
+}
+
+@Component({
+  selector: 'app-uploads',
+  templateUrl: './uploads.component.html'
+})
+export class UploadsComponent {
+  @Input() uploads: FileUploadProgress[] = [];
+}
+```
+
+Add the following snippet to uploads.component.html:
+
+```html
+<div *ngFor="let upload of uploads" class="mb-2">
+  <div class="d-flex justify-content-between">
+    <span [class.text-danger]="upload.failed">
+      {{ upload.name }}
+      <span *ngIf="upload.progress === 100">{{ upload.failed ? '✗' : '✓' }}</span>
+    </span>
+    <span>{{ upload.progress }}%</span>
+  </div>
+  <ngb-progressbar
+    [type]="upload.failed ? 'danger' : 'success'"
+    [value]="upload.progress"
+    [striped]="upload.progress < 100"
+    [animated]="upload.progress < 100">
+  </ngb-progressbar>
+</div>
+```
+
+The UploadsComponent uses `*ngFor` to create a div with the contained template for each upload in the uploads collection. When an upload fails, we add the `text-danger` class to the span that contains the upload's name to color the text red. We add either a checkmark or an x next to the file name when the upload finishes depending on if it failed or not. Finally, we create a progress bar that is either red (danger), or green (success) and bind the `[value]` input to `upload.progress` so that the width of the progress bar is updated as the file uploads.
+
+Now that we have completed the UploadsComponent let's add it to our app.component.html template:
+
+```html
+<app-uploads [uploads]="uploads$ | async"></app-uploads>
+```
+
+### Refreshing the List
+
+The last piece of the puzzle is to fetch a new list of uploaded files when the upload has completed. This can be accomplished using a BehaviorSubject and the finalize operator.
+
+A BehaviorSubject can be used in app.component.ts to dictate when the files$ observable is refreshed:
+
+```typescript
+import { BehaviorSubject } from 'rxjs';
+import { switchMap, finalize } from 'rxjs/operators';
+
+private getFilesSubject = new BehaviorSubject<void>(undefined);
+
+constructor(private http: HttpClient) {
+  this.files$ = this.getFilesSubject.pipe(
+    switchMap(() => this.http.get<FilesTableEntry[]>('http://localhost:3000/files'))
+  );
+}
+```
+
+The finalize operator gets called when an observable stream completes. Let's have getFilesSubject emit an event in the function that gets called by finalize so that the list of files gets refreshed when the upload is done:
+
+```typescript
+// In the observable pipe:
+finalize(() => this.getFilesSubject.next())
+```
+
+## Congratulations!
+
+Thanks for following along! In the future, I hope to release part 2 of this tutorial that explains how you can add a modal dialog, move the upload logic into a "smart" component, add files to an upload that is already in progress, and make the app look more professional.
+
+**Want to Connect?** If you found the information in this tutorial useful please follow me on [GitHub](https://github.com/bobbyg603), and subscribe to my [YouTube](https://www.youtube.com/c/bobbyg603) channel.

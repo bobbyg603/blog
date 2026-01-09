@@ -1,0 +1,86 @@
+---
+title: "Git Filter-Repo Submodule Extraction"
+description: "Use git-filter-repo to extract folders into submodules and boost code reuse"
+pubDate: 2022-07-12
+author: "Bobby Galli"
+categories: ["Software Development"]
+tags: ["git", "submodules", "software-development", "software-engineering", "projects"]
+---
+
+*"I will always choose a lazy person to do a difficult job because a lazy person will find an easy way to do it."* — [Frank B. Gilbreth Sr](https://quoteinvestigator.com/tag/frank-gilbreth-sr/)
+
+## Management
+
+Managing projects with duplicated code and tangled file systems is a [fools errand](https://idioms.thefreedictionary.com/a+fool's+errand). Impending deadlines and pressure to complete tasks leads to corner cutting and hasty decision making. Laziness in the present often causes exponentially more work in the future whereas an ounce of critical thinking and strategy can save you from tons of hard work [down the line](https://idioms.thefreedictionary.com/down+the+line).
+
+## Strategy
+
+While working on a new C++ project, two of our engineers noticed some similarities between a legacy C++ project and our new project. The new project has fundamental architecture differences when compared with the older project, but shares a few pieces of functionality. We wanted to share modules between the projects using only tools we were already using and decided that extracting pieces of code into standalone projects and extracting those projects into [Git submodules](https://git-scm.com/book/en/v2/Git-Tools-Submodules) was the optimal strategy for our situation. Submodules are repos inside of repos and allow for code to be shared, but modified and tracked separately from their parent repos. Additionally, by using git-filter-repo we are able to extract and preserve all of the commits to our folder of interest.
+
+## Extracting the Submodule
+
+The recommended tool for submodule extraction is [git-filter-repo](https://github.com/newren/git-filter-repo). Git-filter-repo is a tool that doesn't ship with Git by default, but is recommended for this type of operation in Git's [official documentation](https://git-scm.com/docs/git-filter-branch#_warning).
+
+To use git-filter-repo you'll need to perform the following steps:
+
+- Ensure you have [Python 3](https://www.python.org/downloads/) installed. On newer version of Windows installing Python via the [Windows Store](https://www.microsoft.com/store/productId/9PJPW5LDXLZ5) is the easiest way to get Python configured for `git-filter-repo`.
+- Download [git-filter-repo.py](https://raw.githubusercontent.com/newren/git-filter-repo/main/git-filter-repo) but save the file as `git-filter-repo` (no extension) if you're on macOS or Linux you'll need to run `chmod +x git-filter-repo` to make it executable.
+- Add the folder containing `git-filter-repo` to PATH ([Windows](https://www.computerhope.com/issues/ch000549.htm), [macOS](https://apple.stackexchange.com/a/358873/266217), [Linux](https://linuxize.com/post/how-to-add-directory-to-path-in-linux/)).
+
+Once you've installed git-filter-repo you'll want to clone a new copy of the repo you plan to extract the folder from. You can specify the name of the new repo as the last argument to git clone to remind yourself what you were doing in case you get interrupted or distracted:
+
+```bash
+git clone https://github.com/user/repo <<name of new repo>>
+```
+
+Set your working directory to the root folder of the repo you just cloned. This example uses the `main` branch, but you can filter a repo from the commits on any branch:
+
+```bash
+cd <<name of new repo>> && git checkout main
+```
+
+Before performing any repo filtering we want to remove the `origin` remote so that we don't accidentally push any destructive changes to the parent repo.
+
+```bash
+git remote rm origin
+```
+
+Next, run filter repo passing the `--subdirectory-filter` argument followed by the folder you'd like to use to create your submodule. This command will remove any folders and commits that aren't related to the folder specified by `--subdirectory-filter` and will move the files in the specified path to the root directory of the repo. Note, Windows users will want to use the forward slash `/` instead of the traditional backward slash in your paths:
+
+```bash
+git filter-repo --subdirectory-filter path/to/folder
+```
+
+Notice we use the `--force` flag in the command above. The `--force` flag is required to override a warning about the repo not being clean. The warning happens because we removed the `origin` remote. We run `git filter-repo` with the `--force` flag to safely override the warning due to the remote mismatch.
+
+Now that you've filtered the repo we can push the contents to the submodule repo. Create a new repo in GitHub and add the url as the `origin` remote:
+
+```bash
+git remote add origin https://github.com/user/submodule
+```
+
+Finally, push the current branch to the new repo:
+
+```bash
+git push --set-upstream origin main
+```
+
+## Using the Submodule
+
+At this point you've successfully extracted the folder to a submodule! To use the submodule, switch over to the parent repo and run the following command:
+
+```bash
+git submodule add https://github.com/user/submodule-repo
+```
+
+That's it! You've successfully extracted your folder to a submodule. You can now modify the files within the submodule and pull the changes in multiple repos.
+
+You can learn more about extracting git submodules via the following resources:
+
+- Splitting a subfolder out into a new repository ([GitHub](https://docs.github.com/en/get-started/using-git/splitting-a-subfolder-out-into-a-new-repository))
+- Create a submodule repository from a folder and keep its git commit history ([Stack Overflow](https://stackoverflow.com/questions/17413493/create-a-submodule-repository-from-a-folder-and-keep-its-git-commit-history))
+- How to Git clone including submodules ([Stack Overflow](https://stackoverflow.com/questions/3796927/how-to-git-clone-including-submodules))
+
+Thanks for reading!
+
+**Want to Connect?** If you found the information in this tutorial useful please subscribe on [Medium](http://bobbyg603.medium.com/), follow me on [X](https://x.com/bobbyg603), and/or subscribe to my [YouTube](https://www.youtube.com/c/bobbyg603) channel.

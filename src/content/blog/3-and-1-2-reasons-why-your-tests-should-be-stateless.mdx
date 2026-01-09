@@ -1,0 +1,136 @@
+---
+title: "3 and 1/2 Reasons Why Your Tests Should Be Stateless"
+description: "Save time and reduce headaches with self-encapsulated tests"
+pubDate: 2022-06-03
+author: "Bobby Galli"
+categories: ["Software Development"]
+tags: ["programming", "unit-testing", "cypress", "typescript", "javascript"]
+---
+
+## Definition
+
+*"A stateless process or application can be understood in isolation. There is no stored knowledge of or reference to past transactions. Each transaction is made as if from scratch for the first time…"* — Red Hat ([source](https://www.redhat.com/en/topics/cloud-native-apps/stateful-vs-stateless))
+
+## Living in a Bubble
+
+Debugging obscure test failures is about as fun as hiking Mt. Kilimanjaro with a rock in your shoe. If you've ever written a unit, integration, or end-to-end (E2E) test you have likely experienced extreme boredom stepping through incalculable lines of test code, chasing your tail trying to hunt down unknown errors. Countless hours of frustration can be saved by writing self-encapsulated, self-configuring tests instead of relying on applications to magically exist in the desired state.
+
+## 1. Standalone Tests Are Easier To Debug
+
+The problem is in the test. You don't have to snoop around other tests, your application's test user account, or check your database to ensure the correct information exists and is available for testing. Knowing exactly where to look for the solution to your test failure greatly accelerates the rate at which you are able to resolve test issues.
+
+## 2. Self-Encapsulated Tests Can Be Run in Parallel
+
+Writing tests that can only operate in a specific order is a serious [anti-pattern](https://en.wikipedia.org/wiki/Anti-pattern). For longer running tests such as Integration and E2E tests, it becomes particularly important to run tests in parallel to reduce test suite runtimes. Additionally, it's vitally important that you have the ability to launch long-running tests independently of the test suite.
+
+## 3. Stateless Tests Can Be Run in Multiple Environments
+
+Relying on the preexisting application state in your tests means relying on undocumented memories of the test's author. Tests that rely on the application being configured a specific way prior to the start of the test suite often can't run in multiple environments such as on a [CI/CD machine](https://betterprogramming.pub/ci-cd-for-angular-developers-be9a1485d22b) or in a new hire's IDE. It's a tedious endeavor into drudgery setting up new environments for running tests manually — don't do it!
+
+## Bonus: Stateless Tests Double As Documentation
+
+Well-written tests are the best form of technical documentation. Tests describe actions that can be performed on a system, as well as the conditions under which those actions can be performed. When a test includes all the necessary set-up it's significantly more transparent to the observer how the system is supposed to work.
+
+## The Problem
+
+In this scenario, a developer on our team has written a suite comprised of two [Cypress](https://cypress.io) E2E tests. The first test adds a user to a table containing a list of users. The second test filters the table and ensures that a user is displayed in the list after the filter has been applied.
+
+The developer writes the test suite as follows:
+
+```typescript
+describe('Users Table', () => {
+  const user = { name: 'Bobby', email: 'bobby@example.com' };
+
+  it('should add a user to the table', () => {
+    cy.visit('/users');
+    cy.addUser(user);
+    cy.get('[data-cy="users-table"]').should('contain', user.name);
+  });
+
+  it('should filter users by name', () => {
+    cy.visit('/users');
+    cy.get('[data-cy="filter-input"]').type(user.name);
+    cy.get('[data-cy="users-table"]').should('contain', user.name);
+  });
+});
+```
+
+Notice that the second test is filtering based on a user that was added by the first test. The second test can't be executed independently or in parallel. A failure in the first test might trigger a false positive failure in the second test even if the functionality in the second test is working properly.
+
+## The Remedy
+
+Writing tests that don't contain dependencies on the external state is often straightforward. There are a variety of options to improve the sample test above. The easiest solution is to simply move the call to `cy.addUser()` to the `beforeEach` block, as you can see below:
+
+```typescript
+describe('Users Table', () => {
+  const user = { name: 'Bobby', email: 'bobby@example.com' };
+
+  beforeEach(() => {
+    cy.visit('/users');
+    cy.addUser(user);
+  });
+
+  it('should add a user to the table', () => {
+    cy.get('[data-cy="users-table"]').should('contain', user.name);
+  });
+
+  it('should filter users by name', () => {
+    cy.get('[data-cy="filter-input"]').type(user.name);
+    cy.get('[data-cy="users-table"]').should('contain', user.name);
+  });
+});
+```
+
+There are a few drawbacks to the solution above. The first issue is that we've introduced duplication in our tests and both tests are written above are testing the `cy.addUser(user)` command. The second issue is that setting up tests using user actions is slow and should be avoided unless you are specifically testing the user action.
+
+To speed up our test and reduce duplication we can re-write the test to use an API client to configure the state of the system directly. You can define a Cypress [task](https://docs.cypress.io/guides/tooling/plugins-guide#cy-task) `cy.task('add:user', user)` and leverage it to add the user at test time via an API call, shown below:
+
+```typescript
+describe('Users Table', () => {
+  const user = { name: 'Bobby', email: 'bobby@example.com' };
+
+  it('should add a user to the table', () => {
+    cy.visit('/users');
+    cy.addUser(user);
+    cy.get('[data-cy="users-table"]').should('contain', user.name);
+  });
+
+  it('should filter users by name', () => {
+    cy.task('add:user', user);
+    cy.visit('/users');
+    cy.get('[data-cy="filter-input"]').type(user.name);
+    cy.get('[data-cy="users-table"]').should('contain', user.name);
+  });
+});
+```
+
+The second solution is closer to optimal, but do we really need to add the user via an API in order to filter the table? Adding the user via a task is still prone to failures, and isn't necessary to test filtering the table. In our hypothetical application, the users' table is filtered on the client and we can improve the test by mocking the state of the system via a network [intercept](https://docs.cypress.io/api/commands/intercept#Usage). Here's the code:
+
+```typescript
+describe('Users Table', () => {
+  const user = { name: 'Bobby', email: 'bobby@example.com' };
+
+  it('should add a user to the table', () => {
+    cy.visit('/users');
+    cy.addUser(user);
+    cy.get('[data-cy="users-table"]').should('contain', user.name);
+  });
+
+  it('should filter users by name', () => {
+    cy.intercept('GET', '/api/users', { body: [user] });
+    cy.visit('/users');
+    cy.get('[data-cy="filter-input"]').type(user.name);
+    cy.get('[data-cy="users-table"]').should('contain', user.name);
+  });
+});
+```
+
+## Final Thoughts
+
+Like most things, the topics described above should be taken with a [grain of salt](https://en.wikipedia.org/wiki/Grain_of_salt). In an ideal scenario, all tests would be able to run completely standalone and have no dependencies on their environment being configured in a specific manner. However, the real world is messy and sometimes it isn't feasible to make every test responsible for the entirety of its state.
+
+In an example scenario, it might be undesirable to create a new user every time you run a test. A reasonable alternative might be to create a new user at the beginning of the entire test suite or use a user that already exists in the system. In such a scenario, your tests should handle the necessary configuration of the account and not depend on any existing configuration to be present at the beginning of the test run.
+
+Thanks for reading!
+
+**Want to Connect?** If you found the information in this tutorial valuable, follow me on [X](https://x.com/bobbyg603).

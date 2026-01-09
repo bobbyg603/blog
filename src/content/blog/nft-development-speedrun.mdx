@@ -1,0 +1,263 @@
+---
+title: "NFT Development Speedrun"
+description: "Deploy an NFT Contract on Ethereum in Record Time"
+pubDate: 2022-11-20
+author: "Bobby Galli"
+categories: ["Web Development"]
+tags: ["nft", "nodejs", "cryptocurrency", "ethereum", "development"]
+---
+
+## Definition
+
+*"The term 'crypto winter' refers to a cryptocurrency market that is underperforming. The term is analogous to a stock market bear market. Crypto winter is characterized by negative sentiment and lower average asset values across a broad range of digital currencies."* — [Diksha Sharma](https://qr.ae/pvj8P2)
+
+## Crypto Winter
+
+It's November 2022 and cryptocurrency markets have been getting absolutely hammered as of late. The [FTX catastrophe](https://en.wikipedia.org/wiki/FTX_(company)) has monopolized headlines and many news outlets are, once again, [declaring cryptocurrency dead](https://99bitcoins.com/bitcoin-obituaries/).
+
+Despite sentiment on cryptocurrency turning sour, crypto winter is the best time for developers and creators to dive into new projects. Crypto winter is when the "get rich quick" people retreat into their caves and those who understand cryptocurrency's transformational potential start to hunt for the next big project.
+
+## On Your Mark
+
+In this tutorial we are going to develop a suite of basic [Node.js](https://nodejs.org/en/) tools for deploying an [NFT](https://en.wikipedia.org/wiki/Non-fungible_token) contract to [Ethereum](https://ethereum.org/). We will leverage [Alchemy](https://www.alchemy.com/), [Hardhat](https://hardhat.org/), and [Pinata](https://www.pinata.cloud/) to build deploy an [ERC-721](https://eips.ethereum.org/EIPS/eip-721) token contract that can be viewed in a [Metamask](https://metamask.io/) wallet.
+
+This tutorial has been condensed from an [Ethereum.org post](https://ethereum.org/en/developers/tutorials/how-to-write-and-deploy-an-nft/) in order to focus on the "how" behind deploying an NFT. If you'd like more information about the "why" behind various steps in this article please see the [original blog article](https://ethereum.org/en/developers/tutorials/how-to-write-and-deploy-an-nft/) or leave a comment below.
+
+A companion repo for this tutorial is available on [GitHub](https://github.com/bobbyg603/nft).
+
+## Get Set
+
+Before we can develop our contract we need to get familiar with the tooling. We'll be using [Alchemy](https://www.alchemy.com/) and [alchemy-sdk-js](https://github.com/alchemyplatform/alchemy-sdk-js) to build code that interacts with the Ethereum blockchain. [Pinata](https://docs.pinata.cloud/what-can-i-learn-here/what-is-pinata) is an [IPFS](https://ipfs.tech/) [pinning service](https://docs.ipfs.tech/how-to/work-with-pinning-services/#use-an-existing-pinning-service) that we'll use to host the image for our NFT. [Hardhat](https://hardhat.org/hardhat-runner/docs/getting-started#overview) provides tools for developing and testing smart contracts on Ethereum. [Metamask](https://metamask.io/) is a crypto wallet and gateway to blockchain apps.
+
+Before continuing the tutorial, please create an Alchemy account. By using this [link](https://alchemy.com/?r=0e755050924e15d3) you can start for free, and we'll both earn platform credit if you decide to upgrade at some point in the future.
+
+Additionally, you'll want to create a [Pinata](https://app.pinata.cloud/register) account in order to host the image for your NFT in on the [decentralized IPFS network](https://docs.ipfs.tech/concepts/what-is-ipfs/#decentralization).
+
+Finally, you'll want to download the [Metamask](https://apps.apple.com/us/app/metamask/id1438144202) and export a copy of your account's [public address](https://metamask.zendesk.com/hc/en-us/articles/360015289512-How-to-copy-your-MetaMask-account-public-address-) and [private key](https://metamask.zendesk.com/hc/en-us/articles/360015289632-How-to-export-an-account-s-private-key). Don't share your privates with anyone!
+
+## Go!
+
+Out of the gate, the first order of business is creating a new app on Alchemy making sure to select the Goerli test network. Once we've created a new app, we'll want to copy the HTTPS API URL.
+
+The next obstacle we need to navigate is acquiring some ETH on the [Goerli test network](https://goerli.etherscan.io/). To get your ETH for testing, navigate to the [Goerli Faucet](https://goerlifaucet.com/) provided by Alchemy.
+
+Switch to the Goerli test network in Metamask tapping the **Wallet** button at the top of the app to reveal the list of test networks. Ensure that you received some test ETH from the faucet in the previous step.
+
+On your desktop, create a folder and initialize a new Node.js project.
+
+```bash
+mkdir nft && cd nft && npm init
+```
+
+Add development dependencies.
+
+```bash
+npm i --save-dev hardhat @nomiclabs/hardhat-ethers ethers@^5.0.0 ts-node typescript
+```
+
+Add production dependencies.
+
+```bash
+npm i @alch/alchemy-web3 @openzeppelin/contracts dotenv
+```
+
+Create a new Hardhat project.
+
+```bash
+npx hardhat
+```
+
+Create directories to store `contracts` and `scripts`.
+
+```bash
+mkdir contracts scripts
+```
+
+In the contracts folder create `MyNFT.sol`.
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import "@openzeppelin/contracts/utils/Counters.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
+
+contract MyNFT is ERC721URIStorage, Ownable {
+    using Counters for Counters.Counter;
+    Counters.Counter private _tokenIds;
+
+    constructor() ERC721("MyNFT", "NFT") {}
+
+    function mintNFT(address recipient, string memory tokenURI)
+        public onlyOwner
+        returns (uint256)
+    {
+        _tokenIds.increment();
+
+        uint256 newItemId = _tokenIds.current();
+        _mint(recipient, newItemId);
+        _setTokenURI(newItemId, tokenURI);
+
+        return newItemId;
+    }
+}
+```
+
+In your project's root directory, create a `.env` file to hold your environment variables and secrets. Do not check this file into source control!
+
+```bash
+API_URL="https://eth-goerli.g.alchemy.com/v2/your-api-key"
+PRIVATE_KEY="your-metamask-private-key"
+PUBLIC_KEY="your-metamask-public-key"
+```
+
+In your project's root directory, create `hardhat.config.ts`.
+
+```typescript
+import { HardhatUserConfig } from "hardhat/config";
+import "@nomiclabs/hardhat-ethers";
+import * as dotenv from "dotenv";
+
+dotenv.config();
+
+const { API_URL, PRIVATE_KEY } = process.env;
+
+const config: HardhatUserConfig = {
+  solidity: "0.8.9",
+  defaultNetwork: "goerli",
+  networks: {
+    hardhat: {},
+    goerli: {
+      url: API_URL,
+      accounts: [`0x${PRIVATE_KEY}`]
+    }
+  },
+};
+
+export default config;
+```
+
+Let's compile our `MyNFT.sol` contract.
+
+```bash
+npx hardhat compile
+```
+
+Create a deployment script `deploy.ts` in the scripts folder.
+
+```typescript
+import { ethers } from "hardhat";
+
+async function main() {
+  const MyNFT = await ethers.getContractFactory("MyNFT");
+  const myNFT = await MyNFT.deploy();
+  await myNFT.deployed();
+  console.log("Contract deployed to address:", myNFT.address);
+}
+
+main()
+  .then(() => process.exit(0))
+  .catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });
+```
+
+Run your deployment script to deploy your compiled MyNFT contract to the Goerli test network. Copy your contract deployment address.
+
+```bash
+npx hardhat --network goerli run scripts/deploy.ts
+# Contract deployed to address: 0x4C5266cCc4b3F426965d2f51b6D910325a0E7650
+```
+
+Our NFT will represent a piece of generated art. You can generate an image yourself (using [DALL-E 2](https://openai.com/dall-e-2/) or [Stable Diffusion](https://stability.ai/blog/stable-diffusion-public-release)) or you can use this article's header image.
+
+Once you've selected an image, upload the image to [Pinata](https://www.pinata.cloud/) and copy the file's `CID`.
+
+Create a `nft-metadata.json` file you your project's root replacing `your-ipfs-image-CID` with the `CID` you copied from a previous step. Upload `nft-metadata.json` to Pinata and make note of its `CID`.
+
+```json
+{
+  "attributes": [
+    {
+      "trait_type": "Planet",
+      "value": "Earth"
+    }
+  ],
+  "description": "Astronaut enjoying a drink at a tropical resort.",
+  "image": "ipfs://your-ipfs-image-CID",
+  "name": "Captain Cook"
+}
+```
+
+Now it's time to mint a new NFT! Let's create `mint-nft.ts` in the scripts folder. Be sure to replace the values of `your-contract-address` and `your-ipfs-metadata-CID` with the values you copied in previous steps.
+
+```typescript
+import { createAlchemyWeb3 } from "@alch/alchemy-web3";
+import * as dotenv from "dotenv";
+import contract from "../artifacts/contracts/MyNFT.sol/MyNFT.json";
+
+dotenv.config();
+
+const { API_URL, PUBLIC_KEY, PRIVATE_KEY } = process.env;
+
+const web3 = createAlchemyWeb3(API_URL!);
+
+const contractAddress = "your-contract-address";
+const nftContract = new web3.eth.Contract(contract.abi as any, contractAddress);
+
+async function mintNFT(tokenURI: string) {
+  const nonce = await web3.eth.getTransactionCount(PUBLIC_KEY!, "latest");
+  const tx = {
+    from: PUBLIC_KEY,
+    to: contractAddress,
+    nonce: nonce,
+    gas: 500000,
+    data: nftContract.methods.mintNFT(PUBLIC_KEY, tokenURI).encodeABI(),
+  };
+
+  const signedTx = await web3.eth.accounts.signTransaction(tx, PRIVATE_KEY!);
+  const transactionReceipt = await web3.eth.sendSignedTransaction(signedTx.rawTransaction!);
+  console.log(`Transaction receipt: ${JSON.stringify(transactionReceipt)}`);
+}
+
+mintNFT("ipfs://your-ipfs-metadata-CID");
+```
+
+Mint your NFT!
+
+```bash
+npx ts-node scripts/mint-nft.ts
+```
+
+Finally, add your NFT to Metamask so you can show it off to your friends.
+
+## Mainnet
+
+Be careful! Creating a new NFT contract is expensive. At the time of writing the transaction fee was 0.0267 ETH or ~$30.52. Minting an NFT is cheaper and costs approximately 0.001 ETH or ~$1.50.
+
+You can repeat the process on the Ethereum Mainnet by making the following changes:
+
+- Replace the `API_URL` value in `.env` with a HTTPS API URL of Ethereum Mainnet Alchemy App.
+- Deploy your contract to the Ethereum Mainnet
+
+```bash
+npx hardhat run scripts/deploy.ts
+```
+
+- Replace the `contractAddress` value in `scripts/mint-nft.ts` with the new Mainnet contract address
+- Mint a new NFT
+
+```bash
+npx ts-node scripts/mint-nft.ts
+```
+
+Now that you have an NFT on the Ethereum Mainnet you can things like [set your Twitter profile picture to a hexagonal NFT](https://help.twitter.com/en/using-twitter/twitter-blue-fragments-folder/nft#nftdeviceinstructions) and [display your NFTs](https://opensea.io/0x93D8f129Dca48771733abf0e286b13E8BD6d9bb6) on [OpenSea](https://opensea.io/).
+
+## Congrats!
+
+You've taken your first step on your journey into NFT development! If you have any cool ideas for an NFT project, or are unsure where to go next, please leave a comment below or message me on [X](https://x.com/bobbyg603) — I'd love to hear about your next project!
+
+**Want to Connect?** If you found the information in this tutorial useful please subscribe on [Medium](https://bobbyg603.medium.com/), follow me on [X](https://x.com/bobbyg603), and/or subscribe to my [YouTube](https://youtube.com/bobbyg603) channel.

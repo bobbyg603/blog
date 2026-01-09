@@ -1,0 +1,261 @@
+---
+title: "CI/CD for Angular Developers"
+description: "Automate your releases with GitHub Actions"
+pubDate: 2022-02-24
+author: "Bobby Galli"
+categories: ["Web Development"]
+tags: ["angular", "github-actions", "javascript", "web-development", "programming", "ci-cd"]
+---
+
+## Definition
+
+> "CI/CD [Continuous Integration and Continuous Delivery] is a method to frequently deliver apps to customers by introducing automation into the stages of app development" — [redhat.com](https://www.redhat.com/en/topics/devops/what-is-ci-cd)
+
+## Getting Our Feet Wet
+
+Releasing software manually is about as fun as stepping in gum every day for the rest of your life. Manual releases are time-consuming, prone to mistakes, and a total buzzkill. Modern tools make releasing new versions of your software easy as pie.
+
+In this article we're going to outline the following:
+
+- Create a CI/CD friendly workflow
+- Publish the library to npm
+- Deploy the sample to GitHub Pages
+
+For a reference implementation that demonstrates how to publish an Angular Library with a corresponding sample application, please checkout [ngx-toggle](https://github.com/bobbyg603/ngx-toggle).
+
+## Diving In
+
+A few terminal commands are all it takes to create a new Angular library. First, create a new project using [@angular/cli](https://github.com/angular/angular-cli):
+
+```bash
+ng new ngx-toggle --no-create-application
+```
+
+Next, create a new library:
+
+```bash
+ng g library ngx-toggle
+```
+
+Finally, create a sample so you can show off your library:
+
+```bash
+ng g app ngx-toggle-example
+```
+
+For more information on how to create Angular libraries please see the official Angular [docs](https://angular.io/guide/creating-libraries).
+
+## Keep Swimming
+
+Once you've created a library the next step is to configure your workflow so that it plays nicely with an automated release process.
+
+By following specific conventions when authoring commit messages you can leverage [semantic-release](https://github.com/semantic-release/semantic-release) to increment your package's version, generate release notes, and publish to npm. Semantic-release relies on the [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/#summary) standard in order to work its magic.
+
+Enforcing Conventional Commits manually is a tall order. Instead, let's use [Husky](https://github.com/typicode/husky) and [commitlint](https://github.com/conventional-changelog/commitlint) to reject commit messages that don't meet specific criteria.
+
+Let's get to work! First install the aforementioned packages:
+
+```bash
+npm i -D husky @commitlint/cli @commitlint/config-conventional
+```
+
+Create a `.commitlintrc.js` file at the root of the project that instructs commitlint to use the `@commitlint/config-conventional` configuration and a few rules that will come in handy later:
+
+```javascript
+module.exports = {
+  extends: ['@commitlint/config-conventional'],
+  rules: {
+    'body-max-line-length': [0, 'always'],
+    'footer-max-line-length': [0, 'always']
+  }
+};
+```
+
+Install [git hooks](https://git-scm.com/docs/githooks) with husky in order to run commitlint when a new commit is authored:
+
+```bash
+npx husky install
+```
+
+Add the commit message hook and add the newly created `.husky/commit-msg` file to your git repo:
+
+```bash
+npx husky add .husky/commit-msg 'npx --no-install commitlint --edit'
+```
+
+Add a `prepare` script to your project's `package.json` so that husky will install git hooks when new contributors clone your project and run `npm i`:
+
+```bash
+npm pkg set scripts.prepare="husky install"
+```
+
+Congrats! The next time you author a commit the message will need to be prefixed with `chore:`, `fix:`, or `feat:` otherwise git will throw an error. More information regarding which prefix you should choose when authoring a commit message can be found [here](https://www.conventionalcommits.org/en/v1.0.0/#summary).
+
+## Get on the Bike
+
+The next leg of the journey includes setting up our CI/CD pipeline to build our project, and run our tests. For this section, we're going to assume that you've already built an Angular library and are ready to publish. If you don't already have a library ready to publish feel free to fork [ngx-toggle](https://github.com/bobbyg603/ngx-toggle) so that you can follow along.
+
+First, let's add a GitHub Actions Workflow for continuous integration. Add the following snippet to a new file `.github/workflows/ci.yml`:
+
+```yaml
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run build:ci
+      - run: npm run test:ci
+```
+
+In order for GitHub Actions to run this workflow we'll need to make a few modifications to our Angular library. Add `build:app`, `build:lib`, and `build:ci` scripts to give the build machine a means to build both the library and the sample:
+
+```bash
+npm set-script build:app "ng build ngx-toggle-example --configuration=production --base-href=/ngx-toggle/"
+npm set-script build:lib "ng build ngx-toggle --configuration=production"
+npm set-script build:ci "npm run build:lib && npm run build:app"
+```
+
+We added a `--base-href=/ngx-toggle/` argument to the build script so that we can deploy to a subdirectory of our GitHub Pages user site (more on this later).
+
+We also want to distribute the `README.md` file at the root of our repo along with the library. Let's install `copyfiles` and add one more script to copy `README.md` into our library's `dist` directory every time we run `build:lib`:
+
+```bash
+npm i -D copyfiles && npm set-script postbuild:lib "copyfiles README.md dist/ngx-toggle"
+```
+
+Next, add a `ChromeHeadlessCI` browser and customLaunchers entry in each of your projects' `karma.conf.js` files. The following snippet should be put at the top-level of the object that is passed to `config.set`:
+
+```javascript
+browsers: [
+  'Chrome',
+  'ChromeHeadlessCI'
+],
+customLaunchers: {
+  ChromeHeadlessCI: {
+    base: 'ChromeHeadless',
+    flags: ['--no-sandbox']
+  }
+},
+```
+
+Finally, we need to create `test:app`, `test:lib`, and `test:ci` scripts in `package.json` so that we can run our tests on a GitHub Actions compatible browser without pausing for input or displaying progress:
+
+```bash
+npm set-script test:app "ng test ngx-toggle-example --no-watch --no-progress --browsers=ChromeHeadlessCI"
+npm set-script test:lib "ng test ngx-toggle --no-watch --no-progress --browsers=ChromeHeadlessCI"
+npm set-script test:ci "npm run test:lib && npm run test:app"
+```
+
+Now that these scripts have been created the `ci.yml` workflow action will be run for each pull request to the `main` branch. It's recommended you require the CI workflow to run before pull requests can be merged into your default branch. For a quick guide that describes branch protection with status checks please see this [article](/blog/github-status-checks-and-branch-protection-made-easy).
+
+## Run to the Finish Line
+
+The final piece of the puzzle is to release our library and sample each time a change is pushed to our default branch. We will use [semantic-release-cli](https://github.com/semantic-release/cli) to publish our package to [npm](https://www.npmjs.com) and our sample to [GitHub Pages](https://pages.github.com).
+
+Let's install semantic-release-cli and a few plugins as dev dependencies:
+
+```bash
+npm i -D semantic-release-cli @semantic-release/changelog @semantic-release/git
+```
+
+Run semantic-release-cli to start the configuration process:
+
+```bash
+npx semantic-release-cli setup
+```
+
+The `setup` command will prompt you to input your credentials in order to configure your release. You'll need to generate a [GitHub token](https://github.com/settings/tokens/new?scopes=repo) with the `repo` scope. Also, you'll need to ensure your [2-FA settings](https://docs.npmjs.com/about-two-factor-authentication#two-factor-authentication-modes-on-npm) are set to `auth-only`.
+
+Just to be safe, you should change your npm password after entering it into the prompt.
+
+Next, create a `.releaserc` file at the root of your project so that we can customize semantic-release. We will need to specify the `pkgRoot` directory in order for `@semantic-release/npm` to publish the correct list of files:
+
+```json
+{
+  "branches": ["main"],
+  "plugins": [
+    "@semantic-release/commit-analyzer",
+    "@semantic-release/release-notes-generator",
+    "@semantic-release/changelog",
+    ["@semantic-release/npm", {
+      "pkgRoot": "dist/ngx-toggle"
+    }],
+    "@semantic-release/github",
+    ["@semantic-release/git", {
+      "assets": ["CHANGELOG.md"],
+      "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
+    }]
+  ]
+}
+```
+
+Next, we're going to publish our sample to a sub-directory in a [GitHub Pages user site](https://pages.github.com). You can create a GitHub Pages site for your user or organization by creating a new repo with a name `username.github.io` being sure to replace `username` with your username or organization name (e.g. `bobbyg603.github.io`).
+
+In order to publish to your GitHub Pages user site you'll need to generate a [personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token) with the `repo` scope. This token will allow GitHub Actions to publish the sample to your `username.github.io` user site.
+
+Once you've generated your token, add a `GH_TOKEN` [repository secret](https://docs.github.com/en/actions/security-guides/encrypted-secrets#creating-encrypted-secrets-for-a-repository) so the personal access token can be used by our deployment workflow.
+
+We now have all the pieces necessary to create our `.github/workflows/cd.yml` deployment workflow! This workflow will run for every push to our `main` branch and will publish a new version of our library to [npm](https://www.npmjs.com/package/@bobbyg603/ngx-toggle) and copy our sample to our [GitHub Pages user site](https://bobbyg603.github.io/ngx-toggle/):
+
+```yaml
+name: CD
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run build:ci
+      - run: npm run test:ci
+      - name: Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npx semantic-release
+      - name: Deploy
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          token: ${{ secrets.GH_TOKEN }}
+          repository-name: username/username.github.io
+          branch: main
+          folder: dist/ngx-toggle-example
+          target-folder: ngx-toggle
+```
+
+Under the **Deploy** step you'll need to replace the values for `repository-name`, `folder`, and `target-folder` with values that are specific to your GitHub Pages repo and project.
+
+## Celebrate Your Victory!
+
+Congratulations!
+
+You've just configured a really powerful CI/CD pipeline for your Angular app! To test the integration, open and merge a pull request to the `main` branch.
+
+When you open the [pull request](https://github.com/bobbyg603/ngx-toggle/pull/1) you should be prevented from merging until the `ci.yml` [workflow](https://github.com/bobbyg603/ngx-toggle/runs/5295770975?check_suite_focus=true) has completed successfully.
+
+After merging, the `cd.yml` [workflow](https://github.com/bobbyg603/ngx-toggle/runs/5295804809?check_suite_focus=true) should run, create a [tag](https://github.com/bobbyg603/ngx-toggle/tags), generate a GitHub [release](https://github.com/bobbyg603/ngx-toggle/releases/tag/v1.0.1), update [CHANGELOG.md](https://github.com/bobbyg603/ngx-toggle/blob/main/CHANGELOG.md), [label](https://github.com/bobbyg603/ngx-toggle/pulls?q=is%3Apr+is%3Aclosed+label%3Areleased) the pull request as released, and [deploy](https://github.com/bobbyg603/bobbyg603.github.io/commit/02e78c912a1efcc40b9405edc538b44cab5bee5a) the sample to your [GitHub Pages site](https://bobbyg603.github.io/ngx-toggle).
+
+**Want to Connect?** If you found the information in this tutorial useful please subscribe on [Medium](http://bobbyg603.medium.com), follow me on [X](https://x.com/bobbyg603), and/or subscribe to my [YouTube](https://www.youtube.com/c/bobbyg603) channel.
