@@ -42,9 +42,15 @@ Finally, you'll want to download the [Metamask](https://apps.apple.com/us/app/me
 
 Out of the gate, the first order of business is creating a new app on Alchemy making sure to select the Goerli test network. Once we've created a new app, we'll want to copy the HTTPS API URL.
 
+![Acquiring Alchemy HTTPS API URL](/pictures/blog/nft-development-speedrun/alchemy-api-url.gif)
+
 The next obstacle we need to navigate is acquiring some ETH on the [Goerli test network](https://goerli.etherscan.io/). To get your ETH for testing, navigate to the [Goerli Faucet](https://goerlifaucet.com/) provided by Alchemy.
 
+![Send Yourself ETH from the Goerli Faucet](/pictures/blog/nft-development-speedrun/goerli-faucet.gif)
+
 Switch to the Goerli test network in Metamask tapping the **Wallet** button at the top of the app to reveal the list of test networks. Ensure that you received some test ETH from the faucet in the previous step.
+
+![Switching to the Goerli Test Network](/pictures/blog/nft-development-speedrun/goerli-network.gif)
 
 On your desktop, create a folder and initialize a new Node.js project.
 
@@ -179,6 +185,8 @@ Our NFT will represent a piece of generated art. You can generate an image yours
 
 Once you've selected an image, upload the image to [Pinata](https://www.pinata.cloud/) and copy the file's `CID`.
 
+![Upload your NFT Art to Pinata](/pictures/blog/nft-development-speedrun/pinata-upload.gif)
+
 Create a `nft-metadata.json` file you your project's root replacing `your-ipfs-image-CID` with the `CID` you copied from a previous step. Upload `nft-metadata.json` to Pinata and make note of its `CID`.
 
 ```json
@@ -236,6 +244,8 @@ npx ts-node scripts/mint-nft.ts
 ```
 
 Finally, add your NFT to Metamask so you can show it off to your friends.
+
+![Add the NFT to your Metamask Mobile Wallet](/pictures/blog/nft-development-speedrun/metamask-add-nft.gif)
 
 ## Mainnet
 
