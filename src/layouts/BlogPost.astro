@@ -1,0 +1,98 @@
+---
+import BaseLayout from './BaseLayout.astro';
+import FormattedDate from '../components/FormattedDate.astro';
+import type { CollectionEntry } from 'astro:content';
+
+interface Props {
+  post: CollectionEntry<'blog'>;
+}
+
+const { post } = Astro.props;
+const { title, description, pubDate, updatedDate, heroImage, author, tags, categories } = post.data;
+---
+
+<BaseLayout title={`${title} | Bobby Galli`} description={description} image={heroImage}>
+  <article class="max-w-4xl mx-auto px-4 py-12">
+    <!-- Hero Image -->
+    {heroImage && (
+      <div class="relative w-full h-64 md:h-96 mb-8 rounded-xl overflow-hidden">
+        <img
+          src={heroImage}
+          alt={title}
+          class="w-full h-full object-cover"
+        />
+      </div>
+    )}
+
+    <!-- Article Header -->
+    <header class="mb-8">
+      <!-- Categories -->
+      {categories && categories.length > 0 && (
+        <div class="flex flex-wrap gap-2 mb-4">
+          {categories.map((category) => (
+            <span class="text-xs font-semibold uppercase tracking-wider text-barn-red">
+              {category}
+            </span>
+          ))}
+        </div>
+      )}
+
+      <h1 class="text-4xl md:text-5xl font-display font-bold text-timber mb-4 leading-tight">
+        {title}
+      </h1>
+
+      <p class="text-xl text-stone mb-6">{description}</p>
+
+      <!-- Meta -->
+      <div class="flex flex-wrap items-center gap-4 text-sm text-stone pb-6 border-b border-cream-dark">
+        <div class="flex items-center gap-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+          </svg>
+          <span>{author}</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+          </svg>
+          <FormattedDate date={pubDate} />
+        </div>
+        {updatedDate && (
+          <div class="flex items-center gap-2">
+            <span class="text-stone-light">Updated:</span>
+            <FormattedDate date={updatedDate} />
+          </div>
+        )}
+      </div>
+
+      <!-- Tags -->
+      {tags && tags.length > 0 && (
+        <div class="flex flex-wrap gap-2 mt-4">
+          {tags.map((tag) => (
+            <a href={`/blog/tag/${tag}`} class="tag">
+              #{tag}
+            </a>
+          ))}
+        </div>
+      )}
+    </header>
+
+    <!-- Article Content -->
+    <div class="prose max-w-none">
+      <slot />
+    </div>
+
+    <!-- Back to Blog -->
+    <div class="mt-12 pt-8 border-t border-cream-dark">
+      <a
+        href="/blog"
+        class="inline-flex items-center gap-2 text-barn-red hover:text-barn-red-light transition-colors font-medium"
+      >
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+        </svg>
+        Back to all posts
+      </a>
+    </div>
+  </article>
+</BaseLayout>

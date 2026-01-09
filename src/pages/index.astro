@@ -1,0 +1,254 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import BlogCard from '../components/BlogCard.astro';
+import SkillBar from '../components/SkillBar.astro';
+import { getCollection } from 'astro:content';
+
+const posts = (await getCollection('blog'))
+  .filter((post) => !post.data.draft)
+  .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf())
+  .slice(0, 3);
+---
+
+<BaseLayout title="Bobby Galli | Software Developer & AI Enthusiast">
+  <!-- Hero Section -->
+  <section class="relative overflow-hidden">
+    <div class="absolute inset-0 bg-gradient-to-br from-timber/5 via-transparent to-sage/10"></div>
+    <div class="max-w-6xl mx-auto px-4 py-20 md:py-32">
+      <div class="grid md:grid-cols-2 gap-12 items-center">
+        <div class="animate-fade-in">
+          <p class="text-barn-red font-semibold mb-4 tracking-wide uppercase text-sm">
+            Software Developer & AI Enthusiast
+          </p>
+          <h1 class="text-5xl md:text-6xl font-display font-bold text-timber mb-6 leading-tight">
+            Hey, I'm <span class="text-gradient">Bobby Galli</span>
+          </h1>
+          <p class="text-xl text-stone mb-4">
+            A friendly, hard-working, curious, and entrepreneurial minded individual trying to leave the world a little better than I found it.
+          </p>
+          <p class="text-lg text-stone-light mb-8 italic">
+            "Saving the world a pull request at a time"
+          </p>
+          <div class="flex flex-wrap gap-4">
+            <a
+              href="/blog"
+              class="px-6 py-3 bg-barn-red text-cream rounded-lg font-semibold hover:bg-barn-red-light transition-colors"
+            >
+              Read the Blog
+            </a>
+            <a
+              href="/about"
+              class="px-6 py-3 border-2 border-timber text-timber rounded-lg font-semibold hover:bg-timber hover:text-cream transition-colors"
+            >
+              About Me
+            </a>
+          </div>
+        </div>
+        <div class="relative">
+          <div class="absolute -inset-4 bg-gradient-to-br from-sage/30 to-barn-red/20 rounded-2xl blur-2xl"></div>
+          <img
+            src="/pictures/bobby-barn.jpeg"
+            alt="Bobby at the barn"
+            class="relative rounded-2xl shadow-2xl w-full object-cover aspect-square"
+          />
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- What I Do Section -->
+  <section class="bg-white py-20">
+    <div class="max-w-6xl mx-auto px-4">
+      <h2 class="text-3xl md:text-4xl font-display font-bold text-timber text-center mb-4">
+        What I Do
+      </h2>
+      <p class="text-stone text-center max-w-2xl mx-auto mb-12">
+        By day I'm building tools that help developers ship better software. By night, I'm exploring the latest in AI and tinkering with side projects.
+      </p>
+
+      <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <!-- BugSplat -->
+        <div class="card p-8">
+          <div class="w-12 h-12 bg-barn-red/10 rounded-lg flex items-center justify-center mb-4">
+            <svg class="w-6 h-6 text-barn-red" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+            </svg>
+          </div>
+          <h3 class="font-display text-xl font-bold text-timber mb-2">BugSplat</h3>
+          <p class="text-stone text-sm mb-4">
+            Principal Software Engineer building crash and error reporting tools that help development teams ship better software.
+          </p>
+          <a href="https://bugsplat.com" target="_blank" rel="noopener" class="text-barn-red hover:text-barn-red-light text-sm font-medium">
+            Visit BugSplat &rarr;
+          </a>
+        </div>
+
+        <!-- Working Dev's Hero -->
+        <div class="card p-8">
+          <div class="w-12 h-12 bg-sage/20 rounded-lg flex items-center justify-center mb-4">
+            <svg class="w-6 h-6 text-sage" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+            </svg>
+          </div>
+          <h3 class="font-display text-xl font-bold text-timber mb-2">Working Dev's Hero</h3>
+          <p class="text-stone text-sm mb-4">
+            My consulting company where I help businesses build great software and solve tough technical challenges.
+          </p>
+          <a href="https://workingdevshero.com" target="_blank" rel="noopener" class="text-barn-red hover:text-barn-red-light text-sm font-medium">
+            Learn More &rarr;
+          </a>
+        </div>
+
+        <!-- AI & Open Source -->
+        <div class="card p-8">
+          <div class="w-12 h-12 bg-gold/20 rounded-lg flex items-center justify-center mb-4">
+            <svg class="w-6 h-6 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+            </svg>
+          </div>
+          <h3 class="font-display text-xl font-bold text-timber mb-2">AI & Open Source</h3>
+          <p class="text-stone text-sm mb-4">
+            AI enthusiast who loves testing the latest tools. 15+ published articles and open-source libraries on GitHub.
+          </p>
+          <a href="https://github.com/bobbyg603" target="_blank" rel="noopener" class="text-barn-red hover:text-barn-red-light text-sm font-medium">
+            View GitHub &rarr;
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Skills Section -->
+  <section class="py-20">
+    <div class="max-w-6xl mx-auto px-4">
+      <div class="grid md:grid-cols-2 gap-12 items-center">
+        <div>
+          <h2 class="text-3xl md:text-4xl font-display font-bold text-timber mb-6">
+            Technical Skills
+          </h2>
+          <p class="text-stone mb-8">
+            From frontend frameworks to backend systems, I've spent years honing my craft across the full stack.
+          </p>
+          <SkillBar skill="Full Stack Development" level={95} />
+          <SkillBar skill="Backend & APIs" level={90} />
+          <SkillBar skill="Database Design" level={85} />
+          <SkillBar skill="DevOps & CI/CD" level={90} />
+        </div>
+        <div class="relative">
+          <img
+            src="/pictures/bobby-keith-working.jpeg"
+            alt="Bobby working"
+            class="rounded-2xl shadow-xl"
+          />
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Life Outside Code -->
+  <section class="bg-timber text-cream py-20">
+    <div class="max-w-6xl mx-auto px-4">
+      <h2 class="text-3xl md:text-4xl font-display font-bold text-center mb-4">
+        Life Outside the Terminal
+      </h2>
+      <p class="text-cream/80 text-center max-w-2xl mx-auto mb-12">
+        When I'm not pushing commits, you'll find me in the great outdoors or spending time with my wife Cassie.
+      </p>
+
+      <div class="grid md:grid-cols-4 gap-6">
+        <div class="text-center">
+          <div class="w-32 h-32 mx-auto mb-4 rounded-full overflow-hidden border-4 border-cream/20">
+            <img src="/pictures/bobby-timmy-golfing.jpeg" alt="Golfing" class="w-full h-full object-cover" />
+          </div>
+          <h3 class="font-semibold mb-1">Golf</h3>
+          <p class="text-cream/60 text-sm">Chasing birdies</p>
+        </div>
+        <div class="text-center">
+          <div class="w-32 h-32 mx-auto mb-4 rounded-full overflow-hidden border-4 border-cream/20">
+            <img src="/pictures/bobby-snowboard.jpeg" alt="Snowboarding" class="w-full h-full object-cover" />
+          </div>
+          <h3 class="font-semibold mb-1">Snowboarding</h3>
+          <p class="text-cream/60 text-sm">In the mountains</p>
+        </div>
+        <div class="text-center">
+          <div class="w-32 h-32 mx-auto mb-4 rounded-full overflow-hidden border-4 border-cream/20">
+            <img src="/pictures/bobby-cassie-loon.jpeg" alt="With Cassie" class="w-full h-full object-cover" />
+          </div>
+          <h3 class="font-semibold mb-1">Adventures</h3>
+          <p class="text-cream/60 text-sm">With my wife</p>
+        </div>
+        <div class="text-center">
+          <div class="w-32 h-32 mx-auto mb-4 rounded-full overflow-hidden border-4 border-cream/20">
+            <img src="/pictures/bobby-barn.jpeg" alt="At the barn" class="w-full h-full object-cover" />
+          </div>
+          <h3 class="font-semibold mb-1">The Barn</h3>
+          <p class="text-cream/60 text-sm">At the barn</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Latest Posts -->
+  {posts.length > 0 && (
+    <section class="py-20">
+      <div class="max-w-6xl mx-auto px-4">
+        <div class="flex justify-between items-center mb-12">
+          <h2 class="text-3xl md:text-4xl font-display font-bold text-timber">
+            Latest Posts
+          </h2>
+          <a href="/blog" class="text-barn-red hover:text-barn-red-light font-medium">
+            View all &rarr;
+          </a>
+        </div>
+        <div class="grid md:grid-cols-3 gap-8">
+          {posts.map((post) => (
+            <BlogCard post={post} />
+          ))}
+        </div>
+      </div>
+    </section>
+  )}
+
+  <!-- Testimonial -->
+  <section class="py-20 bg-cream-dark">
+    <div class="max-w-4xl mx-auto px-4 text-center">
+      <svg class="w-12 h-12 text-sage mx-auto mb-6" fill="currentColor" viewBox="0 0 24 24">
+        <path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h3.983v10h-9.983z"/>
+      </svg>
+      <blockquote class="text-2xl md:text-3xl font-display text-timber mb-6 leading-relaxed">
+        Smart, clear thinking, creative and enthusiastic describe Bobby. He brings a smile and energy to his tasks.
+      </blockquote>
+      <cite class="text-stone not-italic">— Doug D.</cite>
+    </div>
+  </section>
+
+  <!-- CTA Section -->
+  <section class="py-20">
+    <div class="max-w-4xl mx-auto px-4 text-center">
+      <h2 class="text-3xl md:text-4xl font-display font-bold text-timber mb-4">
+        Let's Connect
+      </h2>
+      <p class="text-stone mb-8 max-w-xl mx-auto">
+        Whether you want to chat about software, AI, or just say hi — I'd love to hear from you.
+      </p>
+      <div class="flex justify-center gap-4">
+        <a
+          href="https://linkedin.com/in/bobby-galli-55b91128"
+          target="_blank"
+          rel="noopener"
+          class="px-6 py-3 bg-timber text-cream rounded-lg font-semibold hover:bg-timber-light transition-colors"
+        >
+          Connect on LinkedIn
+        </a>
+        <a
+          href="https://github.com/bobbyg603"
+          target="_blank"
+          rel="noopener"
+          class="px-6 py-3 border-2 border-timber text-timber rounded-lg font-semibold hover:bg-timber hover:text-cream transition-colors"
+        >
+          Follow on GitHub
+        </a>
+      </div>
+    </div>
+  </section>
+</BaseLayout>

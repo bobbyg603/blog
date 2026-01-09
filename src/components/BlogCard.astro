@@ -1,0 +1,50 @@
+---
+import FormattedDate from './FormattedDate.astro';
+import type { CollectionEntry } from 'astro:content';
+
+interface Props {
+  post: CollectionEntry<'blog'>;
+}
+
+const { post } = Astro.props;
+const { title, description, pubDate, heroImage, tags, categories } = post.data;
+---
+
+<article class="card overflow-hidden group">
+  {heroImage && (
+    <div class="relative h-48 overflow-hidden">
+      <img
+        src={heroImage}
+        alt={title}
+        class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+      />
+      {categories && categories.length > 0 && (
+        <div class="absolute top-3 left-3">
+          <span class="bg-barn-red text-cream text-xs font-semibold px-3 py-1 rounded-full">
+            {categories[0]}
+          </span>
+        </div>
+      )}
+    </div>
+  )}
+  <div class="p-6">
+    <div class="text-sm text-stone mb-2">
+      <FormattedDate date={pubDate} />
+    </div>
+    <h3 class="text-xl font-display font-bold text-timber mb-2 group-hover:text-barn-red transition-colors">
+      <a href={`/blog/${post.id}`} class="hover:underline">
+        {title}
+      </a>
+    </h3>
+    <p class="text-stone text-sm mb-4 line-clamp-2">
+      {description}
+    </p>
+    {tags && tags.length > 0 && (
+      <div class="flex flex-wrap gap-1">
+        {tags.slice(0, 3).map((tag) => (
+          <span class="tag text-xs">#{tag}</span>
+        ))}
+      </div>
+    )}
+  </div>
+</article>

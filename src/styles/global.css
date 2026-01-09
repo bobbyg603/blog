@@ -1,0 +1,208 @@
+@import "tailwindcss";
+
+@theme {
+  /* Rustic-Modern Color Palette */
+  --color-timber: #3d2914;
+  --color-timber-light: #5c4023;
+  --color-barn-red: #8b2500;
+  --color-barn-red-light: #a83a1a;
+  --color-sage: #87a878;
+  --color-sage-light: #a3c293;
+  --color-cream: #f5f0e6;
+  --color-cream-dark: #e8e0d0;
+  --color-stone: #6b6b6b;
+  --color-stone-light: #8a8a8a;
+  --color-charcoal: #2d2d2d;
+  --color-gold: #d4a857;
+  --color-gold-light: #e5c17a;
+
+  /* Fonts */
+  --font-display: 'Playfair Display', Georgia, serif;
+  --font-body: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+}
+
+/* Base styles */
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-body);
+  background-color: var(--color-cream);
+  color: var(--color-charcoal);
+  line-height: 1.7;
+}
+
+/* Typography */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: var(--color-timber);
+  line-height: 1.2;
+}
+
+/* Prose styles for blog content */
+.prose {
+  max-width: 65ch;
+  color: var(--color-charcoal);
+}
+
+.prose h1 {
+  font-size: 2.5rem;
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+}
+
+.prose h2 {
+  font-size: 1.875rem;
+  margin-top: 2rem;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid var(--color-sage);
+}
+
+.prose h3 {
+  font-size: 1.5rem;
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.prose p {
+  margin-bottom: 1.25rem;
+}
+
+.prose a {
+  color: var(--color-barn-red);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  transition: color 0.2s ease;
+}
+
+.prose a:hover {
+  color: var(--color-barn-red-light);
+}
+
+.prose ul, .prose ol {
+  margin-left: 1.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.prose li {
+  margin-bottom: 0.5rem;
+}
+
+.prose ul li {
+  list-style-type: disc;
+}
+
+.prose ol li {
+  list-style-type: decimal;
+}
+
+.prose blockquote {
+  border-left: 4px solid var(--color-sage);
+  padding-left: 1.5rem;
+  margin: 1.5rem 0;
+  font-style: italic;
+  color: var(--color-stone);
+  background: var(--color-cream-dark);
+  padding: 1rem 1.5rem;
+  border-radius: 0 0.5rem 0.5rem 0;
+}
+
+.prose code {
+  font-family: var(--font-mono);
+  background: var(--color-cream-dark);
+  padding: 0.2rem 0.4rem;
+  border-radius: 0.25rem;
+  font-size: 0.875em;
+}
+
+.prose pre {
+  background: var(--color-charcoal);
+  color: var(--color-cream);
+  padding: 1.25rem;
+  border-radius: 0.5rem;
+  overflow-x: auto;
+  margin: 1.5rem 0;
+}
+
+.prose pre code {
+  background: transparent;
+  padding: 0;
+  color: inherit;
+}
+
+.prose img {
+  border-radius: 0.75rem;
+  margin: 2rem auto;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+}
+
+/* Utility classes */
+.text-gradient {
+  background: linear-gradient(135deg, var(--color-barn-red) 0%, var(--color-gold) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Link hover effects */
+.link-hover {
+  position: relative;
+}
+
+.link-hover::after {
+  content: '';
+  position: absolute;
+  width: 0;
+  height: 2px;
+  bottom: -2px;
+  left: 0;
+  background-color: var(--color-barn-red);
+  transition: width 0.3s ease;
+}
+
+.link-hover:hover::after {
+  width: 100%;
+}
+
+/* Card styles */
+.card {
+  background: white;
+  border-radius: 1rem;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+}
+
+/* Tag styles */
+.tag {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  background: var(--color-sage-light);
+  color: var(--color-timber);
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  transition: background 0.2s ease;
+}
+
+.tag:hover {
+  background: var(--color-sage);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.5s ease forwards;
+}

@@ -1,0 +1,81 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import BlogCard from '../../components/BlogCard.astro';
+import { getCollection } from 'astro:content';
+
+const posts = (await getCollection('blog'))
+  .filter((post) => !post.data.draft)
+  .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+
+// Get unique tags and categories
+const allTags = [...new Set(posts.flatMap((post) => post.data.tags))];
+const allCategories = [...new Set(posts.flatMap((post) => post.data.categories))];
+---
+
+<BaseLayout title="Blog | Bobby Galli" description="Thoughts on software development, AI, and life from Bobby Galli.">
+  <div class="max-w-6xl mx-auto px-4 py-12">
+    <!-- Header -->
+    <header class="text-center mb-16">
+      <h1 class="text-4xl md:text-5xl font-display font-bold text-timber mb-4">
+        The Blog
+      </h1>
+      <p class="text-xl text-stone max-w-2xl mx-auto">
+        Thoughts on software development, AI, open source, and the occasional life musing.
+      </p>
+    </header>
+
+    <!-- Categories Filter -->
+    {allCategories.length > 0 && (
+      <div class="mb-8">
+        <div class="flex flex-wrap justify-center gap-3">
+          <a href="/blog" class="px-4 py-2 bg-timber text-cream rounded-full text-sm font-medium">
+            All Posts
+          </a>
+          {allCategories.map((category) => (
+            <a
+              href={`/blog/category/${category}`}
+              class="px-4 py-2 bg-cream-dark text-timber rounded-full text-sm font-medium hover:bg-sage-light transition-colors"
+            >
+              {category}
+            </a>
+          ))}
+        </div>
+      </div>
+    )}
+
+    <!-- Posts Grid -->
+    {posts.length > 0 ? (
+      <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+        {posts.map((post) => (
+          <BlogCard post={post} />
+        ))}
+      </div>
+    ) : (
+      <div class="text-center py-20">
+        <div class="w-24 h-24 mx-auto mb-6 bg-cream-dark rounded-full flex items-center justify-center">
+          <svg class="w-12 h-12 text-stone" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"/>
+          </svg>
+        </div>
+        <h2 class="text-2xl font-display font-bold text-timber mb-2">No posts yet</h2>
+        <p class="text-stone">Check back soon for new content!</p>
+      </div>
+    )}
+
+    <!-- Tags Cloud -->
+    {allTags.length > 0 && (
+      <aside class="mt-16 pt-16 border-t border-cream-dark">
+        <h3 class="text-lg font-display font-bold text-timber mb-4 text-center">
+          Browse by Tag
+        </h3>
+        <div class="flex flex-wrap justify-center gap-2">
+          {allTags.map((tag) => (
+            <a href={`/blog/tag/${tag}`} class="tag">
+              #{tag}
+            </a>
+          ))}
+        </div>
+      </aside>
+    )}
+  </div>
+</BaseLayout>

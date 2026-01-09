@@ -1,0 +1,21 @@
+---
+interface Props {
+  skill: string;
+  level: number;
+}
+
+const { skill, level } = Astro.props;
+---
+
+<div class="mb-4">
+  <div class="flex justify-between mb-1">
+    <span class="text-timber font-medium">{skill}</span>
+    <span class="text-stone text-sm">{level}%</span>
+  </div>
+  <div class="w-full bg-cream-dark rounded-full h-2.5 overflow-hidden">
+    <div
+      class="bg-gradient-to-r from-sage to-barn-red h-full rounded-full transition-all duration-500"
+      style={`width: ${level}%`}
+    ></div>
+  </div>
+</div>
