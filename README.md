@@ -1,43 +1,72 @@
-# Astro Starter Kit: Minimal
+# Bobby Galli's Blog
 
-```sh
-npm create astro@latest -- --template minimal
+My personal blog built with [Astro](https://astro.build), featuring articles on software development, web technologies, and more.
+
+**Live site:** [bobbyg603.com](https://bobbyg603.com)
+
+## Tech Stack
+
+- **Framework:** [Astro](https://astro.build) v5
+- **Styling:** [Tailwind CSS](https://tailwindcss.com) v4
+- **Content:** MDX for rich markdown with components
+- **Deployment:** GitHub Pages
+
+## Project Structure
+
 ```
-
-> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
-
-## 🚀 Project Structure
-
-Inside of your Astro project, you'll see the following folders and files:
-
-```text
 /
 ├── public/
+│   └── pictures/blog/    # Blog post images
 ├── src/
-│   └── pages/
-│       └── index.astro
+│   ├── assets/           # Static assets
+│   ├── components/       # Reusable Astro components
+│   ├── content/
+│   │   └── blog/         # MDX blog posts
+│   ├── layouts/          # Page layouts
+│   ├── pages/            # Route pages
+│   └── styles/           # Global styles
 └── package.json
 ```
 
-Astro looks for `.astro` or `.md` files in the `src/pages/` directory. Each page is exposed as a route based on its file name.
+## Getting Started
 
-There's nothing special about `src/components/`, but that's where we like to put any Astro/React/Vue/Svelte/Preact components.
+```bash
+# Install dependencies
+npm install
 
-Any static assets, like images, can be placed in the `public/` directory.
+# Start dev server
+npm run dev
 
-## 🧞 Commands
+# Build for production
+npm run build
 
-All commands are run from the root of the project, from a terminal:
+# Preview production build
+npm run preview
+```
 
-| Command                   | Action                                           |
-| :------------------------ | :----------------------------------------------- |
-| `npm install`             | Installs dependencies                            |
-| `npm run dev`             | Starts local dev server at `localhost:4321`      |
-| `npm run build`           | Build your production site to `./dist/`          |
-| `npm run preview`         | Preview your build locally, before deploying     |
-| `npm run astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `npm run astro -- --help` | Get help using the Astro CLI                     |
+## Writing Blog Posts
 
-## 👀 Want to learn more?
+Blog posts are written in MDX and stored in `src/content/blog/`. Each post requires frontmatter:
 
-Feel free to check [our documentation](https://docs.astro.build) or jump into our [Discord server](https://astro.build/chat).
+```mdx
+---
+title: "Your Post Title"
+description: "A brief description"
+pubDate: 2024-01-15
+category: "Software Development"
+tags: ["javascript", "web-development"]
+heroImage: "/pictures/blog/your-post-slug/hero.jpg"
+---
+
+Your content here...
+```
+
+## License
+
+All rights reserved. Blog content and code are proprietary.
+
+## Connect
+
+- [X](https://x.com/bobbyg603)
+- [GitHub](https://github.com/bobbyg603)
+- [Medium](https://bobbyg603.medium.com)
