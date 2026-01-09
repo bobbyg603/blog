@@ -50,6 +50,8 @@ Notice with the example above, we can emit the value of `this.formGroup.getRawVa
 
 Additionally, the editor can now provide us with type-ahead suggestions for our form's `value` property.
 
+![Type-Ahead Suggestions with Angular 14 Forms](/pictures/blog/how-to-build-a-strongly-typed-angular-14-super-form/type-ahead-suggestions.gif)
+
 The type-safe form value will cause the compiler to emit errors when we access a property that doesn't exist or use a property in a way that conflicts with its type definition.
 
 There's one piece that's missing from our example above. What if we wanted to enforce that `formGroup` matches the `Item<Shirt>` interface when `formGroup` is declared?
@@ -96,7 +98,9 @@ export class ShirtFormComponent {
 }
 ```
 
-Now, if you forget to include a property in `formGroup` you'll get an error at declaration time.
+Now, if you forget to include a property in `formGroup` you'll get an error at declaration time. Here's what that error may look like:
+
+![Error at declaration time](/pictures/blog/how-to-build-a-strongly-typed-angular-14-super-form/error-at-declaration.png)
 
 ## Stack Blitz
 
