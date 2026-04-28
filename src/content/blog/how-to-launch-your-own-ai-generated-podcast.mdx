@@ -1,0 +1,151 @@
+---
+title: "How to Launch Your Own AI-Generated Podcast"
+description: "From cover art to Apple Podcasts in a weekend — TTS, Cloudflare Workers + R2, a GitHub Action for uploads, and why I run all of it through Venice."
+pubDate: 2026-04-27
+author: "Bobby Galli"
+tags: ["Tutorial", "Technology"]
+---
+
+It's tough to find dedicated time to sit and read. But most of us do have time we could fill — a commute, a dog walk, a workout, doing the dishes — and audio slots into those moments in a way text never will. That's why podcasts keep growing, and it's a category most writers and builders are leaving on the table because making one used to mean a microphone, an editor, a host, and a submission gauntlet.
+
+With current AI tooling it's a weekend project. I just shipped [The Hey Bible Podcast](https://podcast.heybible.org/) — every chapter of the World English Bible read aloud, one book per month, fully automated — and I wrote up the launch story on the [OpenClaw blog](https://claudius.blog/blog/launching-hey-bible-podcast/). This post is the companion: the *how-to*. The whole stack is [Venice](https://venice.ai/) for the AI calls, [Cloudflare](https://www.cloudflare.com/) for hosting, and either [Claude Code](https://claude.com/claude-code) or an [OpenClaw](https://openclaw.com/) for everything else.
+
+## Pick the thing you want people to hear
+
+Three patterns work well as a starter project.
+
+**Turn writing you already have into an audiobook.** If you've been blogging or writing newsletters for a few years, you have an episode backlog sitting in markdown files. Each post is a self-contained 10–20 minute episode. Zero new content required.
+
+**Have a model write the show for you.** Pick a topic, hand it to a generative text model with a prompt like *"write a 1,200-word episode script for a podcast about X, conversational, no headings, designed to be read aloud,"* then pipe the output into TTS. Daily news roundups, weekly digests, and "interesting paper of the week" shows are good fits.
+
+**Read a public-domain corpus.** This is what Hey Bible does — read the [WEB Bible](https://worldenglish.bible/), one verse at a time, stitched into chapters and books. Project Gutenberg has thousands of titles you could do the same with.
+
+## Cover art in a few prompts
+
+Apple and Spotify want a square JPEG, at least 1400×1400 px, under 500 KB. I went with 3000×3000 to give myself headroom on retina displays. The Hey Bible cover is at [`web/public/podcast-cover.jpg`](https://github.com/Hey-Bible/hey-bible-podcast/blob/master/web/public/podcast-cover.jpg) — 3000×3000 JPEG, 321 KB.
+
+Generate the first pass with Venice's image generation API. Iterate prompts until the composition is right; that's the cheap, parallel step. Once you have a candidate you like with one or two flaws — wrong typography, weird thumb on the third hand, slightly off color — switch to Venice's *image edit* model. You feed it the image plus a short instruction ("remove the extra finger," "change the title text to white") and it modifies just that. Way cheaper than regenerating, and you don't lose the composition you spent twenty prompts dialing in.
+
+{/* TODO(bobby): drop in the actual prompt you used for the Hey Bible cover, or remove this paragraph */}
+
+## TTS that doesn't sound like a robot
+
+Voice quality is the thing that separates "I built a podcast" from "you'd actually listen to this." [ElevenLabs](https://elevenlabs.io/) voices are the current bar, and Venice exposes them through its OpenAI-compatible audio endpoint. The Hey Bible generator is about a dozen lines:
+
+```python
+url = "https://api.venice.ai/api/v1/audio/speech"
+payload = {
+    "model": "tts-elevenlabs-turbo-v2-5",
+    "voice": "Bill",
+    "input": text,
+    "response_format": "mp3",
+}
+headers = {
+    "Authorization": f"Bearer {api_key}",
+    "Content-Type": "application/json",
+}
+req = urllib.request.Request(url, data=json.dumps(payload).encode(),
+                             headers=headers, method="POST")
+with urllib.request.urlopen(req, timeout=120) as response:
+    output_path.write_bytes(response.read())
+```
+
+Pick a voice, tune the input text so it reads naturally aloud (spell out abbreviations, add commas where you want pauses), and call this once per segment.
+
+For a long episode, generate it in chunks and stitch with [ffmpeg](https://ffmpeg.org/)'s concat demuxer:
+
+```bash
+ffmpeg -f concat -safe 0 -i list.txt -acodec copy episode.mp3
+```
+
+`-acodec copy` means no re-encoding — concatenation is byte-level, lossless, and finishes in seconds even on a multi-hour episode. The obvious thing is to re-encode with a single ffmpeg pass; the trouble is it's both slower and quality-degrading for no benefit.
+
+## Build the site without writing the site
+
+Every podcast needs a home page. You have two good options.
+
+Run [Claude Code](https://claude.com/claude-code) locally and ask it to scaffold a static [Astro](https://astro.build/) site with a homepage, an about page, and an RSS feed. Or give an [OpenClaw](https://openclaw.com/) GitHub access and have it open the PR for you while you do something else. The Hey Bible site lives in the [`web/`](https://github.com/Hey-Bible/hey-bible-podcast/tree/master/web) directory of the repo and is the reference shape: homepage, `/books`, `/about`, generated `feed.xml`, that's it.
+
+The whole Cloudflare deploy config is six lines of `wrangler.jsonc`:
+
+```jsonc
+{
+  "name": "hey-bible-podcast",
+  "compatibility_date": "2026-04-26",
+  "assets": { "directory": "./dist" }
+}
+```
+
+Cloudflare Workers Static Assets serves the built output of `astro build` directly — no server, no container, no per-request cost.
+
+## Cloudflare Workers Static Assets + R2
+
+The whole hosting bill for Hey Bible is rounding-error pennies, and the reason is that [Workers](https://developers.cloudflare.com/workers/) hosts the site for free on the generous free tier and [R2](https://developers.cloudflare.com/r2/) hosts the audio with **zero egress fees**. That last part matters more than anything else for podcasts: a popular episode can rack up terabytes of bandwidth, and on every other object store that's a real bill.
+
+Setup is three steps.
+
+1. **Wire up the Worker.** In the Cloudflare dashboard, create a Worker, point it at your GitHub repo, set the build command to `npm run build` and the output directory to `dist`. From now on, every push to `master` triggers a rebuild — no GitHub Action needed for the site itself.
+2. **Create an R2 bucket and attach a custom domain** like `audio.yourpodcast.com`. R2 will serve from that domain over HTTPS automatically.
+3. **Generate an R2 API token.** In the dashboard: *R2 → Manage R2 API Tokens → Create token*, scope it to "Object Read & Write" on your bucket. Save the four values you'll need: `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, and `R2_BUCKET_NAME`.
+
+One gotcha that cost me an evening: when you upload an MP3, set `Content-Type: audio/mpeg` **and** `Content-Disposition: inline`. iOS Safari refuses to stream files served as `application/octet-stream` with a `Content-Disposition: attachment`, which is what S3-style clients default to. Apple Podcasts uses Safari under the hood for previews, so if you skip this step the show looks broken on iPhone. I documented this in [`LAUNCH.md`](https://github.com/Hey-Bible/hey-bible-podcast/blob/master/LAUNCH.md) — save yourself the debugging session.
+
+## A 30-line GitHub Action to push audio
+
+R2 speaks the S3 API, so the standard AWS tooling Just Works against the R2 endpoint. A minimal workflow that uploads everything in `episodes/` on push:
+
+```yaml
+name: Publish episodes
+on:
+  push:
+    branches: [master]
+    paths: ["episodes/**"]
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: auto
+          aws-access-key-id: ${{ secrets.R2_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      - run: |
+          aws s3 cp ./episodes s3://${{ secrets.R2_BUCKET_NAME }} \
+            --recursive \
+            --endpoint-url https://${{ secrets.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com \
+            --content-type audio/mpeg \
+            --content-disposition inline
+```
+
+Add the four `R2_*` values to *Settings → Secrets and variables → Actions* on your repo and that's it. The Hey Bible repo runs the same upload from a local cron via [`scripts/r2.py`](https://github.com/Hey-Bible/hey-bible-podcast/blob/master/scripts/r2.py) — same boto3 client, same endpoint, same `ContentType`/`ContentDisposition` headers — so this template is just the GitHub-hosted version of the exact code that runs in production.
+
+If you've already got an OpenClaw doing your generation pipeline, you can skip GitHub Actions entirely by giving it a Cloudflare skill that handles R2 uploads. The credentials live in your OpenClaw config instead of GitHub Secrets, the upload happens at the same moment the agent finishes producing the file, and there's no extra workflow to debug.
+
+## The RSS feed *is* the podcast
+
+This is the part most beginners miss. Apple Podcasts and Spotify don't host your show — they consume an RSS feed at a URL you control and re-publish from it. You build the feed once and submit the URL.
+
+The Hey Bible feed lives at [`web/src/pages/feed.xml.ts`](https://github.com/Hey-Bible/hey-bible-podcast/blob/master/web/src/pages/feed.xml.ts) — Astro renders it as a static `feed.xml` at deploy time. The required tags beyond standard RSS are the iTunes namespace (`<itunes:author>`, `<itunes:duration>`, `<itunes:episode>`, `<itunes:explicit>`) and an `<enclosure>` per item with the audio URL, the file size in bytes, and `type="audio/mpeg"`. If you also want Overcast and modern players to show chapter timestamps, emit a [Podcasting 2.0](https://podcastindex.org/) `<podcast:chapters>` tag pointing at a sidecar JSON file.
+
+## Submit to Apple and Spotify
+
+Two portals, roughly the same flow.
+
+**Apple Podcasts Connect** is at [podcastsconnect.apple.com](https://podcastsconnect.apple.com/). Sign in with an Apple ID, paste your feed URL, and verify ownership by clicking a link sent to the email address in your feed's `<itunes:owner>` tag. Review usually takes a few hours. You get back an iTunes ID — `id1895577124` for Hey Bible — which is what every other directory uses to find you.
+
+**Spotify for Creators** is at [creators.spotify.com](https://creators.spotify.com/). Same shape, faster review — often live within an hour.
+
+Once Apple has indexed you, [Overcast](https://overcast.fm/) picks you up automatically at `https://overcast.fm/itunes<your-id>`. The subscribe buttons on the Hey Bible homepage are driven by a 5-line [`subscribe.json`](https://github.com/Hey-Bible/hey-bible-podcast/blob/master/web/src/data/subscribe.json) file — copy that pattern.
+
+## Why all of this through Venice
+
+Every API call in this post points at `api.venice.ai`, and that's not an accident. [Venice](https://venice.ai/) is a privacy-first AI aggregator: text, image, image edit, and TTS all behind one OpenAI-compatible API, and they don't train on your inputs. One key, one billing relationship, one set of endpoints — much less friction than wiring up four different vendors.
+
+There are two ways to authenticate. Drop a `VENICE_API_KEY` into your environment (or your OpenClaw config — Hey Bible's [`generate-verses.py`](https://github.com/Hey-Bible/hey-bible-podcast/blob/master/scripts/generate-verses.py) reads it from `~/.openclaw/openclaw.json` if the env var isn't set), or skip the key entirely and pay per call with [x402 micropayments](https://x402.org/) — your agent settles on-chain, no signup or invoice. Whichever you pick, every snippet above keeps working unchanged.
+
+## Ship it
+
+The whole Hey Bible pipeline runs on roughly {/* TODO(bobby): real monthly cost */} a month, including TTS, hosting, and the R2 bandwidth. The first book — Genesis — is live now at [podcast.heybible.org](https://podcast.heybible.org/), and you can subscribe on [Apple Podcasts](https://podcasts.apple.com/podcast/the-hey-bible-podcast/id1895577124) or [Spotify](https://open.spotify.com/show/6JgfHjRJOmbDLK0gIszuHn). The whole repo is on [GitHub](https://github.com/Hey-Bible/hey-bible-podcast) if you want to crib from a working example.
+
+Pick the show you want to hear, give it a weekend, and ship it.
