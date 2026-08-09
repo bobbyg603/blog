@@ -1,0 +1,393 @@
+---
+title: "Lightweight Error Alerting with Pino and BugSplat"
+description: "Surface production errors straight from your Pino logger to BugSplat with a 40-line hook, AsyncLocalStorage request context, and zero code changes at every call site."
+pubDate: 2026-04-19
+author: "Bobby Galli"
+tags: ["Technology", "Development"]
+---
+
+*"You can't fix what you can't see."* — [Charity Majors](https://charity.wtf/)
+
+## The Silent Backend
+
+A backend that doesn't alert is a backend that slowly [rots](https://en.wikipedia.org/wiki/Software_rot). You ship a feature, the CI is green, and the logs stream past on a Railway dashboard that nobody watches. Eventually something breaks at 2am, a user hits an [HTTP 500](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/500), and the first sign anything is wrong is a support email the next morning.
+
+[Automate It](https://automate.it.com) is my content-automation platform, and until last week it was silent in exactly that way. The backend is a [Bun](https://bun.sh/) + [Express](https://expressjs.com/) API deployed on [Railway](https://railway.app/) with a [Postgres](https://www.postgresql.org/) database (accessed via [Drizzle ORM](https://orm.drizzle.team/)), [Clerk](https://clerk.com/) for auth, [MinIO](https://min.io/) for S3-compatible storage, and an agent worker that spawns [E2B](https://e2b.dev/) sandboxes to run content-generation jobs. Pretty standard indie-SaaS stack.
+
+It had [355 `console.log`](https://github.com/workingdevshero/automate-it/pull/334) calls across 59 files and a `reportError()` helper that the codebase mostly ignored. When a task failed inside a background job, the only trace was an unstructured string in the Railway log drain.
+
+I wanted two things:
+
+1. **Structured JSON logs** so I could actually filter and correlate.
+2. **Automatic alerting** to [BugSplat](https://bugsplat.com/) — but only for the log lines that genuinely warrant waking someone up, not every user-caused 4xx that happens to get caught in a try/catch.
+
+Here's the lightweight pattern I landed on.
+
+## One Hook, Many Call Sites
+
+The idea is to route alerting through the logger itself. Every service module already calls `logger().warn(...)` and `logger().error(...)`. If the logger can post to BugSplat whenever an error-level call includes an error object, then every call site in the codebase becomes an alert-capable call site — without touching any of them.
+
+[Pino](https://getpino.io/) supports this out of the box via `hooks.logMethod`. The hook runs on every log call, in the main thread, before the log line reaches stdout. Perfect seam.
+
+Here's the whole logger:
+
+```typescript
+import { AsyncLocalStorage } from "node:async_hooks";
+import pino from "pino";
+import { BugSplatNode } from "bugsplat-node";
+
+export interface RequestContext {
+  reqId: string;
+  userId?: string;
+  workspaceId?: string;
+}
+
+const asyncLocalStorage = new AsyncLocalStorage<RequestContext>();
+
+const ERROR_LEVEL = 50;
+
+// Read env vars directly — logger is a low-level utility and must keep
+// working in test environments that don't mock our config module.
+const LOG_LEVEL = process.env.LOG_LEVEL || "info";
+const LOG_FORMAT = process.env.LOG_FORMAT || "json";
+const BUGSPLAT_DATABASE = process.env.BUGSPLAT_DATABASE || "";
+
+let bugsplatClient: BugSplatNode | null = null;
+function getBugSplat(): BugSplatNode | null {
+  if (!BUGSPLAT_DATABASE) return null;
+  if (!bugsplatClient) {
+    bugsplatClient = new BugSplatNode(BUGSPLAT_DATABASE, "Automate It Backend", "1.0.0");
+  }
+  return bugsplatClient;
+}
+
+const rootLogger = pino({
+  level: LOG_LEVEL,
+  ...(LOG_FORMAT === "pretty"
+    ? { transport: { target: "pino-pretty", options: { colorize: true } } }
+    : {}),
+  hooks: {
+    logMethod(args, method, level) {
+      if (level >= ERROR_LEVEL) {
+        const extracted = extractError(args as unknown[]);
+        if (extracted) {
+          reportToBugSplat(extracted.err, extracted.msg, asyncLocalStorage.getStore());
+        }
+      }
+      return method.apply(this, args);
+    },
+  },
+});
+
+export function logger(): pino.Logger {
+  const ctx = asyncLocalStorage.getStore();
+  return ctx ? rootLogger.child(ctx) : rootLogger;
+}
+```
+
+`extractError()` pulls the `Error` out of pino's call signatures — either `logger.error(err)` or `logger.error({ err, ...fields }, "msg")`. `reportToBugSplat()` is a best-effort call that [swallows its own failures](https://github.com/nodejs/node/issues/20392) so a BugSplat outage can never cascade into a user-facing error.
+
+The whole thing is about 40 lines. No decorators, no wrappers, no call-site changes. Every existing `logger().error(...)` now alerts.
+
+## Pretty in Dev, JSON in Production
+
+The output format is environment-dependent:
+
+```typescript
+const LOG_FORMAT =
+  process.env.LOG_FORMAT ||
+  (process.env.NODE_ENV === "production" ? "json" : "pretty");
+```
+
+Locally, `bun dev` runs with `pino-pretty` — colorized, indented, grep-friendly. In production, stdout is [newline-delimited JSON](https://github.com/ndjson/ndjson-spec) and that's where the zero-config Railway story kicks in.
+
+Railway's [log drain](https://docs.railway.com/guides/logs) parses every stdout line as it streams off the container. When a line is JSON, every field — `reqId`, `userId`, `workspaceId`, `level`, `err.message`, anything you nested into the log call — becomes a searchable filter in the Observability tab. No plugin, no agent, no config file, no `.railway.toml` entry. Just log JSON and structured search shows up for free.
+
+The same property holds for any drain you'd graduate to later: [Axiom](https://axiom.co/), [BetterStack](https://betterstack.com/), [Datadog](https://www.datadoghq.com/), [Grafana Loki](https://grafana.com/oss/loki/). NDJSON on stdout is the [lingua franca](https://12factor.net/logs) — the application treats its logs as an event stream and never worries about routing.
+
+## The Error vs Warn Convention
+
+Pino ships with levels `trace`, `debug`, `info`, `warn`, `error`, `fatal`. I treat the gap between `warn` and `error` as semantic:
+
+- **`warn`** — something went wrong, but it's either user-caused or degraded. A failed Instagram post because the user's access token expired. A character-limit overflow. An expected-but-imperfect path like "falling back to generic preview because the X API timed out." These show up in the UI or as recoverable degradation; they don't need to page anyone.
+- **`error`** — something broke that **I** need to fix. A 500. An unhandled promise rejection. A Stripe webhook that couldn't be parsed. A background scheduler that errored out. These wake me up.
+
+The `fatal` level stays reserved for its conventional meaning — the process is about to die — and it alerts too (the hook fires on `>= error`, so both error and fatal post to BugSplat). But for normal operation, `error` is the alarm level.
+
+The hook posts on `error` and above. That means the default for new code at `warn` is "log but don't alert," which is exactly the right default — it's a small, deliberate act to promote a message to alarm status. In Automate It, `error` is used at:
+
+- The Express global error handler (`app.ts`)
+- Every route `catch` block that returns a 500
+- Background jobs in `scheduler.ts`, `agent-worker.ts`, `e2b-sandbox.ts`
+- Stripe webhook signature failures and payment failures
+- Mailgun send failures
+
+That's around 110 sites. The other ~100 `logger().warn(...)` calls stay silent — no alert fatigue.
+
+## Request Context with AsyncLocalStorage
+
+An error that says `failed to provision sandbox` is useful. An error that says `failed to provision sandbox — reqId=abc123, userId=user_42, workspaceId=acme` is *actionable*. You can pull up the user's tasks, read the database row, correlate against their other recent requests. The signal-to-noise is dramatically higher.
+
+Node has [`AsyncLocalStorage`](https://nodejs.org/api/async_context.html) — effectively thread-local storage for async workflows. A single Express middleware sets the request context once, and every downstream log line inherits it, no matter how many `await` hops deep:
+
+```typescript
+import crypto from "node:crypto";
+import { runWithContext, setContextFields } from "@/utils/logger.ts";
+
+export const requestId = (req, res, next) => {
+  const id = (req.headers["x-request-id"] as string) || crypto.randomUUID();
+  req.requestId = id;
+  res.setHeader("x-request-id", id);
+
+  runWithContext({ reqId: id }, () => {
+    next();
+  });
+};
+```
+
+`runWithContext` just wraps `asyncLocalStorage.run(ctx, fn)`. Because it's called *before* `next()`, every piece of middleware and every route handler that runs for this request — and anything those handlers `await` — sees the context via `asyncLocalStorage.getStore()`.
+
+`userId` and `workspaceId` get added later, as the auth and workspace-membership middlewares resolve them:
+
+```typescript
+// inside requireAuth middleware
+req.userId = userId;
+setContextFields({ userId });
+```
+
+`setContextFields` mutates the live ALS store, so all subsequent log lines in the same request include the new fields. No re-binding, no middleware re-entry.
+
+## Attributes Give BugSplat the Story
+
+BugSplat's [post API](https://bugsplat.com/) accepts an `attributes` object. Whatever I put there shows up on the crash report as filterable, indexable fields. Combining that with the ALS context:
+
+```typescript
+function reportToBugSplat(err: Error, msg: string | undefined, ctx: RequestContext | undefined): void {
+  const client = getBugSplat();
+  if (!client) return;
+
+  const attributes: Record<string, string> = {};
+  if (ctx?.reqId) attributes.reqId = ctx.reqId;
+  if (ctx?.userId) attributes.userId = ctx.userId;
+  if (ctx?.workspaceId) attributes.workspaceId = ctx.workspaceId;
+
+  client
+    .post(err, {
+      description: msg,
+      attributes: Object.keys(attributes).length > 0 ? attributes : undefined,
+    })
+    .catch(() => {
+      /* best-effort — reporting must never cascade */
+    });
+}
+```
+
+Now when a crash shows up in BugSplat, it comes with:
+
+- **`reqId`** — the exact `X-Request-Id` I can grep for in the log drain
+- **`userId`** — the Clerk user whose request triggered this
+- **`workspaceId`** — which workspace they were acting on
+
+I can pivot on any of those fields from the BugSplat dashboard. If one workspace is producing a disproportionate number of crashes, it jumps out. If one user is hitting the same bug repeatedly, I see it. If a `reqId` appears twice in five minutes, something's looping.
+
+## Attaching the Log Tail
+
+`bugsplat-node`'s `BugSplatAttachment` type is:
+
+```typescript
+interface BugSplatAttachment {
+  filename: string;
+  data: Blob | Uint8Array | BugSplatFileRef;
+}
+```
+
+So yes — you can ship arbitrary bytes along with the crash report. The natural thing is to attach the recent log lines for the crashing request, formatted for human eyes since the BugSplat dashboard renders attachments as plain text.
+
+The first design I considered was a ring buffer **inside** the ALS context — per-request, auto-cleaned when the request ends. The trouble is: a process under any real load has lots of requests in flight, and a per-request buffer dies the moment the request returns. Background jobs that don't run in a request context never get a buffer at all. Nor do log lines emitted *before* the request established a context (parsing middleware, body decode failures).
+
+The cleaner design is one **global** ring buffer, big enough to span many concurrent requests, with each entry tagged by its `reqId` (taken from the ALS context at log time). At post time, filter to the failing request's lines and you get its complete timeline — without losing background-job logs, without hand-rolling lifetime management, and without per-request allocation churn.
+
+For the data structure, [`mnemonist`](https://yomguithereal.github.io/mnemonist/) ships a `CircularBuffer` class that auto-evicts the oldest entry on overflow, iterates in insertion order, and is one of the few well-tested generic data-structure libraries in the JS ecosystem. Using it instead of hand-rolling a head-pointer + modular-arithmetic version trims the implementation to a handful of meaningful lines:
+
+```typescript
+import { CircularBuffer } from "mnemonist";
+
+const RING_BUFFER_SIZE = 500;
+const FALLBACK_TAIL_SIZE = 50;
+
+interface BufferEntry {
+  reqId?: string;
+  line: string;
+}
+
+const ringBuffer = new CircularBuffer<BufferEntry>(Array, RING_BUFFER_SIZE);
+
+function pushToRingBuffer(level: number, args: unknown[], ctx: RequestContext | undefined): void {
+  ringBuffer.push({ reqId: ctx?.reqId, line: formatBufferLine(level, args, ctx) });
+}
+
+function snapshotBuffer(predicate?: (e: BufferEntry) => boolean, tail?: number): string[] {
+  const lines: string[] = [];
+  for (const entry of ringBuffer.values()) {
+    if (!predicate || predicate(entry)) lines.push(entry.line);
+  }
+  return tail !== undefined && lines.length > tail ? lines.slice(-tail) : lines;
+}
+```
+
+`formatBufferLine` produces one **plain-text** line per call — what you'd want to skim inside the BugSplat dashboard, not what a parser would want. Timestamp, level, the request-context fields, the message, then `key=value` for the structured fields. Errors get their stack appended on indented continuation lines so the entry stays grep-friendly:
+
+```typescript
+const LEVEL_LABELS: Record<number, string> = {
+  10: "TRACE", 20: "DEBUG", 30: "INFO ",
+  40: "WARN ", 50: "ERROR", 60: "FATAL",
+};
+
+function formatField(value: unknown): string {
+  if (typeof value === "string") return value.includes(" ") ? JSON.stringify(value) : value;
+  if (typeof value === "number" || typeof value === "boolean" || value === null) return String(value);
+  try { return JSON.stringify(value); } catch { return String(value); }
+}
+
+function formatBufferLine(level: number, args: unknown[], ctx: RequestContext | undefined): string {
+  const [first, second] = args;
+  const fields: Record<string, unknown> = {};
+  let msg: string | undefined;
+  let errStack: string | undefined;
+
+  if (first instanceof Error) {
+    fields.err = first.message;
+    errStack = first.stack;
+    msg = typeof second === "string" ? second : first.message;
+  } else if (typeof first === "string") {
+    msg = first;
+  } else if (first && typeof first === "object") {
+    for (const [key, value] of Object.entries(first)) {
+      if (value instanceof Error) {
+        fields[key] = value.message;
+        if (key === "err" && !errStack) errStack = value.stack;
+      } else {
+        fields[key] = value;
+      }
+    }
+    msg = typeof second === "string" ? second : undefined;
+  }
+
+  const ts = new Date().toISOString();
+  const lvl = LEVEL_LABELS[level] ?? `L${level}`;
+  const ctxParts: string[] = [];
+  if (ctx?.reqId) ctxParts.push(`reqId=${ctx.reqId}`);
+  if (ctx?.userId) ctxParts.push(`userId=${ctx.userId}`);
+  if (ctx?.workspaceId) ctxParts.push(`workspaceId=${ctx.workspaceId}`);
+  const fieldParts = Object.entries(fields).map(([k, v]) => `${k}=${formatField(v)}`);
+  const segments = [ts, lvl, ...ctxParts, msg ?? "", ...fieldParts].filter(Boolean);
+  let line = segments.join(" ");
+
+  if (errStack) {
+    line += "\n" + errStack.split("\n").map((s) => `    ${s}`).join("\n");
+  }
+  return line;
+}
+```
+
+The hook pushes on every call, then forwards as before:
+
+```typescript
+hooks: {
+  logMethod(args, method, level) {
+    const ctx = asyncLocalStorage.getStore();
+    pushToRingBuffer(level, args as unknown[], ctx);
+    if (level >= ERROR_LEVEL) {
+      const extracted = extractError(args as unknown[]);
+      if (extracted) {
+        reportToBugSplat(extracted.err, extracted.msg, ctx);
+      }
+    }
+    return method.apply(this, args);
+  },
+},
+```
+
+And `reportToBugSplat` snapshots the buffer at post time. With a request context, filter to that `reqId`. Without one (background jobs, startup), fall back to the global tail:
+
+```typescript
+const lines = ctx?.reqId
+  ? snapshotBuffer((e) => e.reqId === ctx.reqId)
+  : snapshotBuffer(undefined, FALLBACK_TAIL_SIZE);
+const attachments = lines.length > 0
+  ? [{
+      filename: "logs.txt",
+      data: new Blob([lines.join("\n")], { type: "text/plain" }),
+    }]
+  : undefined;
+
+client.post(err, { description: msg, attributes, attachments });
+```
+
+A real attachment looks like this:
+
+```
+2026-04-20T00:53:30.854Z INFO  reqId=abc-123 userId=u-42 incoming request method=GET path=/api/foo
+2026-04-20T00:53:30.854Z INFO  reqId=abc-123 userId=u-42 validating input stage=validate
+2026-04-20T00:53:30.854Z WARN  reqId=abc-123 userId=u-42 transient db error, retrying retries=2
+2026-04-20T00:53:30.855Z ERROR reqId=abc-123 userId=u-42 operation failed err="connection refused" taskId=t-99
+    Error: connection refused
+        at <anonymous> (.../routes/foo.ts:42:11)
+        at run (node:async_hooks:62:22)
+        at processTicksAndRejections (native:7:39)
+```
+
+You can read the whole story top-to-bottom in five seconds, no JSON viewer required.
+
+### Performance
+
+The push is the only thing that runs on every log call. Steady-state cost per call:
+
+- `asyncLocalStorage.getStore()` — ~100ns (already paid by pino's hooks)
+- formatting the line (string concat + `JSON.stringify` for any object-valued fields) — ~1–5µs typical
+- `CircularBuffer.push` — ~50ns
+
+About **5µs per log line**, total. At 1K logs/sec that's 0.5% CPU; at 10K logs/sec ~5%. Memory is fixed at ~250KB per process (500 entries × ~500 bytes). The post-time filter is O(500), runs only on errors, irrelevant.
+
+Two things you might be tempted to do that are worse:
+
+- **Defer formatting** by storing raw arg references and only formatting at attachment time. Saves the steady-state CPU but holds references to caller objects — those objects can be mutated after logging (which silently corrupts the captured line) and they pin GC. Predictable memory beats marginal CPU savings for an ops-tooling feature.
+- **Use `array.shift()`** instead of a circular buffer. It's two fewer lines but turns every push into O(N). At 500 entries that's a 500-element memory copy on the hot path. The mnemonist `CircularBuffer` does the right thing in ~10 fewer lines than the hand-rolled head-pointer version.
+
+### What about a turnkey package?
+
+There's no off-the-shelf "pino + ring buffer + crash-tracker" combo on npm — that pipeline is a few-dozen-line glue job that you have to write. The closest existing pattern is [Sentry's breadcrumbs](https://docs.sentry.io/platforms/javascript/enriching-events/breadcrumbs/) — exactly this concept, but tied to Sentry's SDK and not portable to BugSplat or anywhere else.
+
+For just the buffer though, you absolutely should reach for an existing package — [`mnemonist`](https://yomguithereal.github.io/mnemonist/) (used here) covers it, and so does [`denque`](https://github.com/invertase/denque) (which the official MongoDB and Redis Node clients use, though it's more of a deque than a ring buffer). The data structure is well-trodden territory; don't reinvent it.
+
+The result is a per-process ring buffer that costs ~250KB, fires on every error, and gives every BugSplat crash a `logs.txt` attachment containing the full timeline of the failing request — exactly what you want when you're staring at a crash report at 2am wondering what the user was doing right before it broke.
+
+## What We Haven't Solved Yet
+
+The current setup covers the common case — an HTTP request hits a bug — but there are obvious gaps on the road to real production observability:
+
+**Distributed tracing.** A single `reqId` links log lines within one request on one instance. It doesn't link the request to the async work it kicked off — the Clerk webhook that arrives two seconds later, the agent worker that picks up a task from the database, the Stripe webhook that fires when the subscription renews. A proper [OpenTelemetry](https://opentelemetry.io/) trace with spans spanning those boundaries would show cause and effect across the whole system. The `reqId` is a poor man's trace ID; one day it'll need to become a real one.
+
+**Metrics.** Logs are good at "what happened for this one request." They're bad at "how many 500s per minute are we serving" or "what's the p95 latency on `/api/tasks`." A lightweight [Prometheus](https://prometheus.io/) scrape endpoint or a push to Railway's [built-in metrics](https://docs.railway.com/reference/metrics) would close this gap without adding vendor lock-in.
+
+**Request/response logging.** Right now only the request start gets logged (`incoming request`). The companion access log — status code, duration, response size, on `res.finish` — is missing. For any API, that's the single most useful log line you can emit, and it's cheap.
+
+**Alert-driven runbooks.** A BugSplat crash report is a signal, not a solution. Every error-level site should ideally link to a short playbook: what it means, common causes, where to look first. Today I rely on remembering. Tomorrow I'd like a `runbook` field on every error call, rendered as a link in the BugSplat description.
+
+**Background job context.** ALS propagates through `await` and through most Node primitives, but a background job that starts fresh via `setInterval` or a new event loop tick doesn't have a request context. Those jobs need to `runWithContext({ reqId: crypto.randomUUID() })` at their own entry point so their logs are still correlatable.
+
+**Sampling.** At current volume every log line ships. That's fine. At 10x the traffic, I'll probably want to sample `info` at 10% while keeping `error`/`fatal` at 100%, and make the sampling rate a per-request field that downstream tooling can respect.
+
+None of these are blockers for shipping. They're the next ten small improvements, each of them cheap and each of them worth doing before the platform ever grows large enough to need something heavier like [Datadog](https://www.datadoghq.com/) or [Honeycomb](https://www.honeycomb.io/).
+
+## Takeaway
+
+You don't need an observability vendor, an agent, or a rewrite to get production-quality error alerting on a modern Node/Bun stack. Pino's `hooks.logMethod` plus `AsyncLocalStorage` plus a small BugSplat bridge gives you:
+
+- Structured JSON logs by default
+- Alerting gated on a deliberate `error` vs `warn` convention, not sprayed across every `catch`
+- Full request context (reqId, userId, workspaceId) on every crash report, for free
+- A 500-entry circular buffer of recent log lines, attached to every crash as the failing request's complete timeline
+- A clear path to traces, metrics, and runbooks as the platform grows
+
+Ship the simple version first. Earn the right to think about the next ten improvements by actually getting alerts when things break.
